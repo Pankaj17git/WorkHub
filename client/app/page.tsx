@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import { 
   Search, 
@@ -24,6 +24,7 @@ import DotDistortionBackground from '@/components/ui/DotDistortionBackground';
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [city, setCity] = useState('Chandigarh');
+  const parentcontainerRef = useRef<HTMLDivElement>(null);
 
   const popularSearches = [
     'Fan Repair',
@@ -38,7 +39,7 @@ export default function HomePage() {
     <div className="space-y-16 pb-20">
       
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-[#091426] via-[#0f1d38] to-[#091426] text-white pt-14 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section ref={parentcontainerRef} className="relative bg-gradient-to-b from-[#091426] via-[#0f1d38] to-[#091426] text-white pt-14 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Animated Dot Distortion Background */}
         <DotDistortionBackground
           dotSize={1.6}
@@ -48,6 +49,7 @@ export default function HomePage() {
           distortionIntensity={9}
           interactionRadius={140}
           interactionStrength={24}
+          containerRef={parentcontainerRef}
         />
 
         <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6">
