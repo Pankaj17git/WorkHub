@@ -5,6 +5,7 @@ export interface ServiceItem {
   price: number;
   durationMinutes: number;
   popular?: boolean;
+  enabled?: boolean;
 }
 
 export interface Review {
@@ -71,4 +72,34 @@ export interface BookingState {
   paymentMethod: 'UPI' | 'CARD' | 'NETBANKING' | 'CASH';
   paymentStatus: 'PAID' | 'PAY_AFTER_SERVICE';
   createdAt: string;
+}
+
+/* Worker / Professional Portal Models */
+
+export interface WorkerJobRequest {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAvatar: string;
+  serviceName: string;
+  serviceCategory: string;
+  location: string;
+  distanceKm: number;
+  date: string;
+  timeWindow: string;
+  earningsAmount: number;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'ON_THE_WAY' | 'IN_PROGRESS' | 'COMPLETED';
+  otp?: string;
+  notes?: string;
+  expiresInSeconds?: number;
+}
+
+export interface WorkerMetric {
+  todayEarnings: number;
+  todayCompletedJobs: number;
+  weeklyEarnings: number;
+  acceptanceRate: number;
+  rating: number;
+  walletBalance: number;
+  totalReviews: number;
 }

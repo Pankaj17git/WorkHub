@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
+import AppShell from "@/components/layout/AppShell";
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -39,9 +38,7 @@ export default function RootLayout({
       className={`${hankenGrotesk.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#f8f9ff] text-[#0d1c2e]">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

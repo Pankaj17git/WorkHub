@@ -76,6 +76,13 @@ export default function Navbar() {
             </Link>
 
             <Link
+              href="/worker/dashboard"
+              className="px-3.5 py-2 text-sm font-semibold text-[#0051d5] bg-[#eff6ff] hover:bg-[#dbeafe] rounded-lg transition-colors border border-[#bfdbfe]"
+            >
+              Worker Portal
+            </Link>
+
+            <Link
               href="/search"
               className="px-4 py-2 text-sm font-semibold text-white bg-[#0051d5] hover:bg-[#0042b0] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
             >
