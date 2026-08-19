@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Sparkles
 } from 'lucide-react';
+import OtpPinInput from '@/components/ui/OtpPinInput';
 import { MOCK_INCOMING_REQUESTS } from '@/data/mockWorkerData';
 import PriceTag from '@/components/ui/PriceTag';
 
@@ -214,21 +215,16 @@ export default function WorkerJobDetailsExecutionPage() {
               </p>
             </div>
 
-            <div className="max-w-xs mx-auto space-y-2">
-              <input
-                type="text"
-                maxLength={4}
-                required
-                autoFocus
-                placeholder="4829"
+            <div className="py-2 space-y-2">
+              <OtpPinInput
+                length={4}
                 value={pinInput}
-                onChange={(e) => { setPinInput(e.target.value); setPinError(false); }}
-                className={`w-full text-center tracking-[1em] text-2xl font-bold font-geist py-3 px-4 bg-[#f8f9ff] border-2 rounded-xl focus:outline-none ${
-                  pinError ? 'border-red-500 bg-red-50' : 'border-[#0051d5]'
-                }`}
+                onChange={(val) => { setPinInput(val); setPinError(false); }}
+                autoFocus={true}
+                hasError={pinError}
               />
               {pinError && (
-                <p className="text-xs text-red-600 font-medium">
+                <p className="text-xs text-red-600 font-semibold font-geist">
                   Invalid PIN. (Hint: Customer PIN is 4829)
                 </p>
               )}
@@ -240,7 +236,8 @@ export default function WorkerJobDetailsExecutionPage() {
             <div className="max-w-xs mx-auto">
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl shadow-md transition-all"
+                disabled={pinInput.length < 4}
+                className="w-full py-3.5 px-4 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-60"
               >
                 Verify PIN & Start Job
               </button>

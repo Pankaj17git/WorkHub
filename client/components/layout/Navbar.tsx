@@ -2,12 +2,85 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, ShieldCheck, ChevronDown, Menu, X, User } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Search, MapPin, ShieldCheck, ChevronDown, Menu, X, ArrowLeft } from 'lucide-react';
 
 export default function Navbar() {
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Chandigarh');
 
+  // Check if user is currently on login or signup pages
+  const isAuthPage =
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname === '/worker/login' ||
+    pathname === '/worker/signup';
+
+  /* Minimalist Header for Login & Signup Pages */
+  if (isAuthPage) {
+    return (
+      <header className="sticky top-0 z-50 bg-[#ffffff] border-b border-[#e2e8f0]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#091426] to-[#0051d5] flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-105 transition-transform">
+                W<span className="text-[#38bdf8]">H</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-extrabold tracking-tight text-[#091426] leading-none">
+                  Work<span className="text-[#0051d5]">Hub</span>
+                </span>
+                <span className="text-[10px] uppercase font-bold text-[#64748b] tracking-wider font-geist mt-0.5">
+                  Verified Marketplace
+                </span>
+              </div>
+            </Link>
+
+            {/* Right side: Login / Signup links + Return Home */}
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-colors ${
+                  pathname.includes('login')
+                    ? 'bg-[#f1f5f9] text-[#091426]'
+                    : 'text-[#64748b] hover:text-[#091426]'
+                }`}
+              >
+                Log In
+              </Link>
+
+              <Link
+                href="/signup"
+                className={`px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition-all ${
+                  pathname.includes('signup')
+                    ? 'bg-[#0051d5] text-white shadow-md'
+                    : 'bg-[#eff6ff] text-[#0051d5] hover:bg-[#dbeafe]'
+                }`}
+              >
+                Sign Up
+              </Link>
+
+              <span className="w-px h-5 bg-[#e2e8f0] hidden sm:inline-block" />
+
+              <Link
+                href="/"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748b] hover:text-[#091426] transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Marketplace</span>
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  /* Full Standard Marketplace Header */
   return (
     <header className="sticky top-0 z-50 bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e2e8f0]">
       {/* Top micro alert banner */}
@@ -72,7 +145,7 @@ export default function Navbar() {
               href="/bookings/pro-1/track"
               className="px-3.5 py-2 text-sm font-medium text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
             >
-              Track Active Job
+              Track Job
             </Link>
 
             <Link
@@ -82,16 +155,30 @@ export default function Navbar() {
               Worker Portal
             </Link>
 
+            {/* Login & Signup Buttons */}
             <Link
-              href="/search"
+              href="/login"
+              className="px-3.5 py-2 text-sm font-semibold text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+            >
+              Log In
+            </Link>
+
+            <Link
+              href="/signup"
               className="px-4 py-2 text-sm font-semibold text-white bg-[#0051d5] hover:bg-[#0042b0] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
             >
-              Book a Pro
+              Sign Up
             </Link>
           </div>
 
           {/* Mobile hamburger */}
           <div className="flex md:hidden items-center gap-2">
+            <Link
+              href="/login"
+              className="px-3 py-1.5 text-xs font-bold text-[#0051d5] bg-[#eff6ff] rounded-lg"
+            >
+              Log In
+            </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-[#0d1c2e] hover:bg-[#f1f5f9]"
@@ -130,12 +217,28 @@ export default function Navbar() {
                 Track Live Booking
               </Link>
               <Link
-                href="/search"
+                href="/worker/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2.5 text-sm font-semibold text-white bg-[#0051d5] rounded-lg"
+                className="px-3 py-2 text-sm font-semibold text-[#0051d5] hover:bg-[#eff6ff] rounded-lg"
               >
-                Book a Verified Pro
+                Worker Portal (Pro Dashboard)
               </Link>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f1f5f9]">
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl"
+                >
+                  Log In
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#0051d5] rounded-xl"
+                >
+                  Sign Up
+                </Link>
+              </div>
             </div>
           </div>
         )}

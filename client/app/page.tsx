@@ -19,6 +19,7 @@ import {
 import CategoryGrid from '@/components/marketplace/CategoryGrid';
 import ProCard from '@/components/marketplace/ProCard';
 import { MOCK_PROS } from '@/data/mockData';
+import DotDistortionBackground from '@/components/ui/DotDistortionBackground';
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,13 +39,15 @@ export default function HomePage() {
       
       {/* Hero Section */}
       <section className="relative bg-gradient-to-b from-[#091426] via-[#0f1d38] to-[#091426] text-white pt-14 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Subtle grid pattern overlay */}
-        <div 
-          className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #38bdf8 1px, transparent 0)`,
-            backgroundSize: '32px 32px'
-          }}
+        {/* Animated Dot Distortion Background */}
+        <DotDistortionBackground
+          dotSize={1.6}
+          dotSpacing={26}
+          dotColor="#38bdf8"
+          dotOpacity={0.4}
+          distortionIntensity={9}
+          interactionRadius={140}
+          interactionStrength={24}
         />
 
         <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6">

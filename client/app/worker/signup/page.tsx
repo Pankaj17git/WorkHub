@@ -14,6 +14,7 @@ import {
   Lock,
   Sparkles
 } from 'lucide-react';
+import OtpPinInput from '@/components/ui/OtpPinInput';
 
 export default function WorkerSignupPage() {
   const router = useRouter();
@@ -47,9 +48,9 @@ export default function WorkerSignupPage() {
       
       {/* Top Banner */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe] text-xs font-semibold">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] text-xs font-semibold">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>WorkHub Pro Partner Registration</span>
+          <span>Professional / Worker Registration</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-[#091426] tracking-tight">
           Join 1,500+ Verified Pros in Chandigarh
@@ -57,6 +58,14 @@ export default function WorkerSignupPage() {
         <p className="text-xs sm:text-sm text-[#64748b] max-w-lg mx-auto">
           Get direct customer bookings, instant daily payouts, zero hidden commissions, and ₹10,000 accidental damage protection.
         </p>
+        <div className="pt-1">
+          <Link
+            href="/signup"
+            className="text-xs font-semibold text-[#0051d5] hover:underline"
+          >
+            &larr; Want to hire or book a professional instead? Create Customer Account
+          </Link>
+        </div>
       </div>
 
       {/* Main Registration Box */}
@@ -182,31 +191,34 @@ export default function WorkerSignupPage() {
               </p>
             </div>
 
-            <div className="max-w-xs mx-auto">
-              <input
-                type="text"
-                maxLength={4}
-                required
-                autoFocus
-                placeholder="4829"
+            <div className="py-2 space-y-2">
+              <OtpPinInput
+                length={4}
                 value={otpValue}
-                onChange={(e) => setOtpValue(e.target.value)}
-                className="w-full text-center tracking-[1em] text-2xl font-bold font-geist py-3 px-4 bg-[#f8f9ff] border-2 border-[#0051d5] rounded-xl focus:outline-none"
+                onChange={setOtpValue}
+                autoFocus={true}
               />
-              <span className="text-[11px] text-[#64748b] block mt-2">
+              <span className="text-[11px] text-[#64748b] block">
                 (Demo OTP: <strong>4829</strong>)
               </span>
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3.5 px-4 bg-[#0051d5] hover:bg-[#0042b0] text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              disabled={isSubmitting || otpValue.length < 4}
+              className="w-full py-3.5 px-4 bg-[#0051d5] hover:bg-[#0042b0] text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {isSubmitting ? <span>Verifying...</span> : <span>Confirm & Proceed to Skill Selection</span>}
             </button>
           </form>
         )}
+
+        <div className="pt-2 text-center text-xs text-[#64748b]">
+          Already registered as a WorkHub Pro?{' '}
+          <Link href="/worker/login" className="text-[#0051d5] font-bold hover:underline">
+            Sign In to Partner Portal
+          </Link>
+        </div>
 
       </div>
 
