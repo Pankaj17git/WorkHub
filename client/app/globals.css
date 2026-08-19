@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --surface: #ffffff;
+    --surface-dim: #f1f5f9;
+    --surface-bright: #f8f9ff;
+    --surface-container: #e6eeff;
+    --surface-container-high: #dce9ff;
+    --on-surface: #0d1c2e;
+    --on-surface-variant: #475569;
+    --primary: #091426;
+    --primary-dark: #0f172a;
+    --primary-container: #1e293b;
+    --secondary: #0051d5;
+    --secondary-container: #316bf3;
+    --trust-teal: #0d9488;
+    --trust-teal-light: #f0fdfa;
+    --warning-urgent: #d97706;
+    --warning-urgent-light: #fffbeb;
+    --outline: #e2e8f0;
+    --outline-variant: #cbd5e1;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--surface-bright);
+  color: var(--on-surface);
+  font-family: var(--font-hanken), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-geist {
+  font-family: var(--font-geist-sans), var(--font-geist-mono), monospace;
+}
+
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Glow effects & animations */
+.card-hover-shadow {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-hover-shadow:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 10px 25px -5px rgba(0, 81, 213, 0.08), 0 8px 10px -6px rgba(0, 81, 213, 0.04);
+  transform: translateY(-2px);
 }
