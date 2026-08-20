@@ -15,9 +15,9 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const { email, password, name, role } = result.data;
+  const { email, password, name, role, phone } = await request.json();
   const emailLowerCase = email.toLowerCase();
-  if (!email || !password || !name || !role) {
+  if (!email || !password || !name || !role || !phone) {
     return NextResponse.json(
       { error: "Email, name, role and password are required" },
       { status: 400 }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   const hashed = await hashPassword(password);
   const user = await prisma.user.create({
-    data: { email: emailLowerCase, password: hashed, name, role },
+    data: { email: emailLowerCase, password: hashed, name, role, phone },
   });
 
   const token = signToken({ userId: user.id.toString(), email: emailLowerCase, role: user.role });
