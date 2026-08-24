@@ -5,6 +5,7 @@ import crypto from "crypto";
 export interface CreateOtpParams {
   userId: bigint;
   expiresInMinutes?: number;
+  length?: number;
 }
 
 export interface VerifyOtpParams {
@@ -13,7 +14,7 @@ export interface VerifyOtpParams {
 }
 
 /**
- * Generate a random 6-digit numeric OTP string
+ * Generate a random numeric OTP string
  */
 export function generateOtpCode(length: number = 6): string {
   const digits = "0123456789";
@@ -34,8 +35,8 @@ export async function hashOtp(otp: string): Promise<string> {
 /**
  * Create a new OTP record in the `otps` table
  */
-export async function createOtp({ userId, expiresInMinutes = 10 }: CreateOtpParams) {
-  const plainOtp = generateOtpCode(6);
+export async function createOtp({ userId, expiresInMinutes = 10, length = 6 }: CreateOtpParams) {
+  const plainOtp = generateOtpCode(length);
   const otpHash = await hashOtp(plainOtp);
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
 

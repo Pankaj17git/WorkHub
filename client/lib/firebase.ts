@@ -23,24 +23,45 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 
 /**
- * Setup invisible reCAPTCHA for Phone OTP verification
+ * Setup invisible or visible reCAPTCHA for Phone OTP verification
  */
-export function setupRecaptcha(elementId: string) {
+export function setupRecaptcha(elementId: string = 'recaptcha-container') {
   if (typeof window === "undefined") return null;
-  return new RecaptchaVerifier(auth, elementId, {
+  
+  // Clear any existing window instance if present
+  if ((window as any).recaptchaVerifier) {
+    try {
+      (window as any).recaptchaVerifier.clear();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const verifier = new RecaptchaVerifier(auth, elementId, {
     size: "invisible",
     callback: () => {
       // reCAPTCHA solved - allow signInWithPhoneNumber
     },
+    'expired-callback': () => {
+      // Response expired - ask user to solve reCAPTCHA again.
+    }
   });
+
+  (window as any).recaptchaVerifier = verifier;
+  return verifier;
 }
 
 /**
- * Send Phone OTP via Firebase Authentication
+ * Send Phone OTP via Firebase Authetnication SMS
  */
-export async function sendPhoneOtp(phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> {
-  return await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+export async function sendPhoneOtp(phoneNumber: string, appVerifier: RecaptchaVerifier | null): Promise<ConfirmationResult> {
+  if (!appVerifier) {
+    throw new Error("reCAPTCHA verifier is not initialized or reCAPTCHA cannot run in this environment.");
+  }
+  const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber.replace(/\D/g, '')}`;
+  return await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
 }
+
 
 /**
  * Send Email Link / OTP via Firebase Authentication

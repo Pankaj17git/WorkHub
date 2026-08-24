@@ -24,6 +24,8 @@
     "prisma": "^7.9.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-react": "^5.32.14",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -34,6 +36,8 @@
     "@types/nodemailer": "^6.4.24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-react": "^5.18.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
