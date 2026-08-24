@@ -8,8 +8,9 @@ import Footer from './Footer';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isWorkerRoute = pathname.startsWith('/worker');
+  const isApiDocsRoute = pathname.startsWith('/api-docs');
 
-  if (isWorkerRoute) {
+  if (isWorkerRoute || isApiDocsRoute) {
     return <>{children}</>;
   }
 
