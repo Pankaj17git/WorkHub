@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-import swaggerSpec from "@/lib/swagger";
+import { docsController } from "@/controller/docs.controller";
 
 export async function GET() {
-  return NextResponse.json(swaggerSpec);
+  return docsController.getDocs();
 }
