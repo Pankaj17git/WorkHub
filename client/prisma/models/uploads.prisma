@@ -1,0 +1,14 @@
+model Upload {
+  id        String   @id @default(cuid())
+  userId    BigInt   @map("user_id")
+  key       String   @unique
+  url       String
+  fileName  String
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("uploads")
+}

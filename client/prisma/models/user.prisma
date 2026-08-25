@@ -11,6 +11,7 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   phone           String?
   otps            Otp[]
+  uploads         Upload[]
 
   @@index([deletedAt])
   @@map("users")

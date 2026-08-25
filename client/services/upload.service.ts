@@ -1,7 +1,9 @@
 import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
-import { prisma } from "@/lib/prisma";
 import { validateFile } from "@/middleware/validateUpload.middleware";
+import { PrismaClient } from "@prisma/client/extension";
+
+const prisma = new PrismaClient();
 
 const BUCKET = process.env.SUPABASE_BUCKET!;
 
@@ -26,7 +28,7 @@ export const uploadService = {
       .from(BUCKET)
       .getPublicUrl(key);
 
-    const record = await prisma.upload.create({
+    const record = await prisma.Upload.create({
       data: {
         key,
         url: publicUrlData.publicUrl,
@@ -41,6 +43,6 @@ export const uploadService = {
 
   async deleteFile(key: string) {
     await supabaseAdmin.storage.from(BUCKET).remove([key]);
-    await prisma.upload.delete({ where: { key } });
+    await prisma.Upload.delete({ where: { key } });
   },
 };
