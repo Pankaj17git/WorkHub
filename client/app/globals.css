@@ -1,4 +1,36 @@
 @import "tailwindcss";
+@import "./landing.css";
+
+/* ── Sticker Market design tokens (see design.md) ── */
+:root {
+  --gesso-canvas: #f4eee4;
+  --gesso-surface-recessed: #eae4db;
+  --gesso-surface: #ffffff;
+  --gesso-surface-elevated: #f5f5f5;
+  --gesso-divider: rgba(0, 0, 0, 0.04);
+  --gesso-fg: #2a2a2a;
+  --gesso-fg-muted: #606060;
+  --gesso-primary: #f5a623;
+  --gesso-on-accent: #000000;
+  --gesso-accent-text: #875b13;
+  --gesso-secondary: #3b82f6;
+  --gesso-accent-2-text: #2f68c5;
+  --gesso-success: #149343;
+  --gesso-warning: #c36b05;
+  --gesso-error: #dc2626;
+  --gesso-extra-1: #c9713a;
+  --gesso-extra-2: #5e7b3a;
+  --gesso-on-image: #fbfbf3;
+  --gesso-font-display: "Satoshi", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --gesso-font-body: "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --gesso-shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --gesso-duration-fast: 180ms;
+  --gesso-easing-default: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
 @layer base {
   :root {
