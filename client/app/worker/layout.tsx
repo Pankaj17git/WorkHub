@@ -15,13 +15,10 @@ export default function WorkerLayout({
   const pathname = usePathname();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Determine if current page is onboarding/auth (signup, login, onboarding skills)
-  const isOnboardingOrAuth =
-    pathname.startsWith('/worker/signup') ||
-    pathname.startsWith('/worker/onboarding') ||
-    pathname.startsWith('/worker/login');
+  // Determine if current page is onboarding
+  const isOnboarding = pathname.startsWith('/worker/onboarding');
 
-  if (isOnboardingOrAuth) {
+  if (isOnboarding) {
     return (
       <div className="min-h-screen bg-[#f8f9ff] flex flex-col text-[#0d1c2e]">
         {/* Clean Onboarding Header without Dashboard Sidebar */}
@@ -42,7 +39,7 @@ export default function WorkerLayout({
 
           <div className="flex items-center gap-3">
             <Link
-              href="/worker/login"
+              href="/login"
               className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-colors ${
                 pathname.includes('login')
                   ? 'bg-[#f1f5f9] text-[#091426]'
@@ -53,7 +50,7 @@ export default function WorkerLayout({
             </Link>
 
             <Link
-              href="/worker/signup"
+              href="/signup"
               className={`px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition-all ${
                 pathname.includes('signup')
                   ? 'bg-[#0051d5] text-white shadow-md'

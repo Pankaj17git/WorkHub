@@ -1,21 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Search, MapPin, ShieldCheck, ChevronDown, Menu, X, ArrowLeft } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Search, MapPin, ShieldCheck, ChevronDown, Menu, X, ArrowLeft, User, LogOut } from 'lucide-react';
+import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Chandigarh');
+  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
   // Check if user is currently on login or signup pages
-  const isAuthPage =
-    pathname === '/login' ||
-    pathname === '/signup' ||
-    pathname === '/worker/login' ||
-    pathname === '/worker/signup';
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
 
   /* Minimalist Header for Login & Signup Pages */
   if (isAuthPage) {
@@ -148,37 +147,57 @@ export default function Navbar() {
               Track Job
             </Link>
 
-            <Link
-              href="/worker/dashboard"
-              className="px-3.5 py-2 text-sm font-semibold text-[#0051d5] bg-[#eff6ff] hover:bg-[#dbeafe] rounded-lg transition-colors border border-[#bfdbfe]"
-            >
-              Worker Portal
-            </Link>
+            {/* Login / Account Buttons */}
+            {session ? (
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-[#091426] bg-[#f1f5f9] rounded-lg border border-[#e2e8f0]">
+                  <User className="w-4 h-4 text-[#0051d5]" />
+                  <span className="max-w-28 truncate">{session.name || session.email}</span>
+                </span>
+                <button
+                  onClick={() => { clearSession(); router.push('/login'); }}
+                  className="px-3.5 py-2 text-sm font-semibold text-[#64748b] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-3.5 py-2 text-sm font-semibold text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+                >
+                  Log In
+                </Link>
 
-            {/* Login & Signup Buttons */}
-            <Link
-              href="/login"
-              className="px-3.5 py-2 text-sm font-semibold text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
-            >
-              Log In
-            </Link>
-
-            <Link
-              href="/signup"
-              className="px-4 py-2 text-sm font-semibold text-white bg-[#0051d5] hover:bg-[#0042b0] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
-            >
-              Sign Up
-            </Link>
+                <Link
+                  href="/signup"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-[#0051d5] hover:bg-[#0042b0] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger */}
           <div className="flex md:hidden items-center gap-2">
-            <Link
-              href="/login"
-              className="px-3 py-1.5 text-xs font-bold text-[#0051d5] bg-[#eff6ff] rounded-lg"
-            >
-              Log In
-            </Link>
+            {session ? (
+              <button
+                onClick={() => { clearSession(); router.push('/login'); }}
+                className="px-3 py-1.5 text-xs font-bold text-[#64748b] hover:text-red-600 bg-[#f1f5f9] rounded-lg flex items-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="px-3 py-1.5 text-xs font-bold text-[#0051d5] bg-[#eff6ff] rounded-lg"
+              >
+                Log In
+              </Link>
+            )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-[#0d1c2e] hover:bg-[#f1f5f9]"
@@ -216,28 +235,30 @@ export default function Navbar() {
               >
                 Track Live Booking
               </Link>
-              <Link
-                href="/worker/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 text-sm font-semibold text-[#0051d5] hover:bg-[#eff6ff] rounded-lg"
-              >
-                Worker Portal (Pro Dashboard)
-              </Link>
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f1f5f9]">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl"
-                >
-                  Log In
-                </Link>
-                <Link
-                  href="/signup"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#0051d5] rounded-xl"
-                >
-                  Sign Up
-                </Link>
+                {session ? (
+                  <div className="col-span-2 flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl">
+                    <User className="w-4 h-4 text-[#0051d5]" />
+                    <span className="truncate">{session.name || session.email}</span>
+                  </div>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full text-center py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl"
+                    >
+                      Log In
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#0051d5] rounded-xl"
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>

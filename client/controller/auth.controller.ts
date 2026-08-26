@@ -90,8 +90,16 @@ export const authController = {
       }
 
       const hashed = await hashPassword(password);
+
+      // Ensure the role exists in the roles table and link it to the user
+      const roleRecord = await prisma.role.upsert({
+        where: { name: role },
+        update: {},
+        create: { name: role },
+      });
+
       const user = await prisma.user.create({
-        data: { email: emailLowerCase, password: hashed, name, role, phone },
+        data: { email: emailLowerCase, password: hashed, name, role, phone, roleId: roleRecord.id },
       });
 
       let token = "";
@@ -218,6 +226,14 @@ export const authController = {
 
       if (!verification.success) {
         return NextResponse.json({ error: verification.message }, { status: 400 });
+      }
+
+      // Mark email as verified on successful OTP verification
+      if (!targetUser.emailVerifiedAt) {
+        targetUser = await prisma.user.update({
+          where: { id: targetUser.id },
+          data: { emailVerifiedAt: new Date() },
+        });
       }
 
       // Generate JWT token for session

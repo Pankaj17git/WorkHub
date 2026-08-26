@@ -416,7 +416,7 @@ const swaggerDefinition = {
       // ─── REQUEST SCHEMAS ────────────────────────────────────────
       RegisterRequest: {
         type: "object",
-        required: ["name", "email", "password", "role", "phone"],
+        required: ["name", "email", "password", "role"],
         properties: {
           name: {
             type: "string",
@@ -435,12 +435,13 @@ const swaggerDefinition = {
           },
           role: {
             type: "string",
-            enum: ["USER", "CUSTOMER", "WORKER", "ADMIN"],
+            enum: ["CUSTOMER", "WORKER"],
             description: "User role",
           },
           phone: {
             type: "string",
-            description: "Phone number with country code",
+            nullable: true,
+            description: "Phone number with country code (optional)",
           },
         },
       },
