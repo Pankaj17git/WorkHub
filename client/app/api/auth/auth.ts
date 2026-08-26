@@ -5,9 +5,9 @@ import { z } from "zod";
 export const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.email("Invalid email address"),
-  role: z.string(),
+  role: z.enum(["CUSTOMER", "WORKER"]),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  phone: z.string()
+  phone: z.string().optional()
 });
 
 export const loginSchema = z.object({

@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "migrate": "node scripts/migrate.mjs",
+    "dev": "node scripts/migrate.mjs && next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "node scripts/migrate.mjs && next start -p 3001",
     "lint": "eslint"
   },
   "dependencies": {
