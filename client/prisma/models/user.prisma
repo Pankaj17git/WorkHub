@@ -3,7 +3,7 @@ model User {
   email           String    @unique @db.VarChar(255)
   name            String?   @db.VarChar(255)
   password        String    @map("password_hash")
-  role            String    @default("USER") @db.VarChar(20)
+  role            String    @default("CUSTOMER") @db.VarChar(20)
   status          String    @default("ACTIVE") @db.VarChar(20)
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamp(6)
   deletedAt       DateTime? @map("deleted_at") @db.Timestamp(6)
