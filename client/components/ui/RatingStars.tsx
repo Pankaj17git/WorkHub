@@ -27,17 +27,17 @@ export default function RatingStars({
   };
 
   return (
-    <div className="inline-flex items-center gap-1.5 font-geist">
-      <div className="flex items-center text-amber-500">
-        <Star className={`${iconSizes[size]} fill-amber-400 text-amber-400`} />
+    <div className="inline-flex items-center gap-1.5">
+      <div className="flex items-center text-[#875b13]">
+        <Star className={`${iconSizes[size]} fill-[#875b13] text-[#875b13]`} />
       </div>
       {showNumber && (
-        <span className={`font-semibold text-[#0d1c2e] ${textSizes[size]}`}>
+        <span className={`font-bold text-[#2a2a2a] ${textSizes[size]}`}>
           {rating.toFixed(2)}
         </span>
       )}
       {reviewCount !== undefined && (
-        <span className={`text-[#64748b] ${textSizes[size]}`}>
+        <span className={`text-[#606060] ${textSizes[size]}`}>
           ({reviewCount})
         </span>
       )}

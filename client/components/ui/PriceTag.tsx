@@ -16,19 +16,19 @@ export default function PriceTag({
   prefix = '₹',
 }: PriceTagProps) {
   const sizeClasses = {
-    sm: 'text-sm font-semibold',
+    sm: 'text-sm font-bold',
     md: 'text-base font-bold',
-    lg: 'text-xl font-bold',
+    lg: 'text-xl font-extrabold tracking-tight',
     xl: 'text-3xl font-extrabold tracking-tight',
   };
 
   return (
-    <div className={`inline-flex items-baseline gap-1 font-geist text-[#0d1c2e] ${className}`}>
+    <div className={`inline-flex items-baseline gap-1 whl-display text-[#2a2a2a] ${className}`}>
       <span className={sizeClasses[size]}>
         {prefix}{amount.toLocaleString('en-IN')}
       </span>
       {unit && (
-        <span className="text-xs font-normal text-[#64748b] tracking-normal font-sans">
+        <span className="text-xs font-medium text-[#606060]">
           {unit}
         </span>
       )}
