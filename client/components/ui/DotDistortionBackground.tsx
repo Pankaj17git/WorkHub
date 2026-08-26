@@ -12,6 +12,7 @@ export interface DotDistortionBackgroundProps {
   dotOpacity?: number;
   dotColor?: string;
   className?: string;
+  containerRef?: React.RefObject<HTMLDivElement | null>
 }
 
 export default function DotDistortionBackground({
@@ -23,9 +24,10 @@ export default function DotDistortionBackground({
   interactionStrength = 22,
   dotOpacity = 0.4,
   dotColor = '#60a5fa',
+  containerRef,
   className = '',
 }: DotDistortionBackgroundProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  // const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const mousePos = useRef<{ x: number; y: number; active: boolean }>({
@@ -40,7 +42,7 @@ export default function DotDistortionBackground({
   });
 
   useEffect(() => {
-    const container = containerRef.current;
+    const container = containerRef?.current;
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
@@ -111,7 +113,7 @@ export default function DotDistortionBackground({
     container.addEventListener('touchmove', handleTouchMove, { passive: true });
     container.addEventListener('touchend', handleTouchEnd);
 
-    let startTime = performance.now();
+    const startTime = performance.now();
 
     // Render loop with continuous fluid organic waves and pointer easing
     const render = (now: number) => {
@@ -207,7 +209,7 @@ export default function DotDistortionBackground({
 
   return (
     <div
-      ref={containerRef}
+      // ref={containerRef}
       aria-hidden="true"
       className={`absolute inset-0 overflow-hidden pointer-events-auto select-none ${className}`}
       style={{ zIndex: 0 }}
