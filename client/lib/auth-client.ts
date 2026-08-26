@@ -32,6 +32,9 @@ function deleteCookie(name: string) {
 export function saveSession(token: string, user: SessionUser) {
   setCookie(TOKEN_COOKIE, token);
   setCookie(USER_COOKIE, JSON.stringify(user));
+  cachedRaw = JSON.stringify(user);
+  cachedUser = user;
+  listeners.forEach((listener) => listener());
 }
 
 export function getToken(): string | null {
@@ -80,4 +83,12 @@ export function clearSession() {
 
 export function dashboardPathForRole(role?: string | null): string {
   return role === "WORKER" ? "/worker/dashboard" : "/";
+}
+
+export function isWorkerRole(user?: SessionUser | null): boolean {
+  return user?.role === "WORKER";
+}
+
+export function isCustomerRole(user?: SessionUser | null): boolean {
+  return user?.role === "CUSTOMER";
 }

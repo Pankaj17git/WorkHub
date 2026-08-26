@@ -58,24 +58,17 @@ npx prisma migrate dev --name add_phone_to_user
 
 ---
 
-## 🔄 2. What to Do After `git pull`
+## 🔄 2. Automatic Migration on Server Startup (`npm run dev` / `npm start`)
 
-When another team member makes database changes and you pull their code (`git pull`), your local database won't automatically have those changes until you run the migration command.
+When you run `npm run dev` or `npm start`, the migration runner script (`scripts/migrate.mjs`) executes automatically:
+- **If migrations are up to date**: Prints `ℹ️ STATUS: Already applied. No pending migrations found.`
+- **If new migrations exist**: Automatically applies them and prints `🚀 STATUS: New migrations detected and executed successfully!`
+- **If migration fails**: Prints `❌ ERROR: Migration execution FAILED!` with the database error message and halts the server startup to protect data integrity.
 
-### Workflow after pulling code:
-
+You can also run migrations standalone anytime:
 ```bash
-# 1. Pull latest code from repository
-git pull origin main
-
-# 2. Apply pending migrations to your local database
-npx prisma migrate dev
-
-# 3. (Optional) Regenerate Prisma Client if needed
-npx prisma generate
+npm run migrate
 ```
-
-> 💡 **Note:** `npx prisma migrate dev` detects unapplied migration files in `prisma/migrations/` and applies them automatically to your database without prompting for a name.
 
 ---
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -9,11 +9,10 @@ import {
   Wrench, 
   Wallet, 
   UserCheck, 
-  Sparkles, 
   ShieldCheck, 
-  LogOut,
   ArrowLeftRight
 } from 'lucide-react';
+import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
 interface WorkerSidebarProps {
   onClose?: () => void;
@@ -21,6 +20,7 @@ interface WorkerSidebarProps {
 
 export default function WorkerSidebar({ onClose }: WorkerSidebarProps) {
   const pathname = usePathname();
+  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
   const navItems = [
     { label: 'Dashboard', href: '/worker/dashboard', icon: LayoutDashboard },
@@ -45,10 +45,12 @@ export default function WorkerSidebar({ onClose }: WorkerSidebarProps) {
             className="w-10 h-10 rounded-xl object-cover border border-[#e2e8f0]"
           />
           <div className="overflow-hidden">
-            <h4 className="text-xs font-bold text-[#091426] truncate">Rahul Sharma</h4>
+            <h4 className="text-xs font-bold text-[#091426] truncate">
+              {session?.name || session?.email || 'Rahul Sharma'}
+            </h4>
             <div className="flex items-center gap-1 text-[10px] text-[#0d9488] font-medium mt-0.5">
               <ShieldCheck className="w-3 h-3" />
-              <span>Govt. Verified Pro</span>
+              <span>Verified Pro Partner</span>
             </div>
           </div>
         </div>

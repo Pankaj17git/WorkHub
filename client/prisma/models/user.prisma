@@ -10,8 +10,8 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   phone           String?
-  roleId          BigInt?
-  roleRef         Role?   @relation(fields: [roleId], references: [id])
+  roleId          BigInt?   @map("role_id")
+  roleRef         Role?     @relation(fields: [roleId], references: [id])
   otps            Otp[]
   uploads         Upload[]
 

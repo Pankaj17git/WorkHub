@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   User,
   Mail,
@@ -15,14 +15,19 @@ import {
   MailCheck
 } from 'lucide-react';
 import OtpPinInput from '@/components/ui/OtpPinInput';
+import { saveSession } from '@/lib/auth-client';
 
 type Step = 'ROLE' | 'FORM' | 'OTP';
 
-export default function SignupPage() {
+function SignupFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlRole = searchParams.get('role');
 
   // Role toggle: 'CUSTOMER' | 'WORKER'
-  const [accountType, setAccountType] = useState<'CUSTOMER' | 'WORKER'>('CUSTOMER');
+  const [accountType, setAccountType] = useState<'CUSTOMER' | 'WORKER'>(
+    urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'
+  );
   const [step, setStep] = useState<Step>('FORM');
 
   const [fullName, setFullName] = useState('');
@@ -33,6 +38,12 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlRole === 'WORKER' || urlRole === 'CUSTOMER') {
+      setAccountType(urlRole);
+    }
+  }, [urlRole]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,9 +120,8 @@ export default function SignupPage() {
 
       const { token, user } = data;
 
-      // Persist session in cookies (client-side)
-      document.cookie = `wh_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-      document.cookie = `wh_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      // Persist session in cookies and reactive store
+      saveSession(token, user);
 
       router.push(user.role === 'WORKER' ? '/worker/dashboard' : '/');
     } catch {
@@ -355,7 +365,10 @@ export default function SignupPage() {
 
         <div className="pt-2 text-center text-xs text-[#64748b]">
           Already have an account?{' '}
-          <Link href="/login" className="text-[#0051d5] font-bold hover:underline">
+          <Link
+            href={`/login${accountType === 'WORKER' ? '?role=WORKER' : ''}`}
+            className="text-[#0051d5] font-bold hover:underline"
+          >
             Sign In Here
           </Link>
         </div>
@@ -363,5 +376,13 @@ export default function SignupPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="max-w-lg mx-auto py-20 text-center text-sm text-gray-500">Loading sign up...</div>}>
+      <SignupFormContent />
+    </Suspense>
   );
 }

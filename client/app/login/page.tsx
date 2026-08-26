@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Lock,
   Mail,
@@ -10,19 +10,41 @@ import {
   User,
   Briefcase,
   ShoppingBag,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert
 } from 'lucide-react';
+import { saveSession } from '@/lib/auth-client';
 
-export default function LoginPage() {
+function LoginFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const urlRole = searchParams.get('role');
+  const redirectUrl = searchParams.get('redirect');
+  const errorCode = searchParams.get('error');
 
   // Role toggle: 'CUSTOMER' | 'WORKER'
-  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>('CUSTOMER');
+  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>(
+    urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'
+  );
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlRole === 'WORKER' || urlRole === 'CUSTOMER') {
+      setRole(urlRole);
+    }
+  }, [urlRole]);
+
+  let initialNotice: string | null = null;
+  if (errorCode === 'unauthorized_worker_access') {
+    initialNotice = 'The Worker Portal is reserved for service professionals. Please log in with a Worker account.';
+  } else if (errorCode === 'workers_cannot_book') {
+    initialNotice = 'Worker accounts cannot book customer services. Please log in with a Customer account.';
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +68,21 @@ export default function LoginPage() {
 
       const { token, user } = data;
 
-      // Persist session in cookies (client-side)
-      document.cookie = `wh_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-      document.cookie = `wh_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      // Persist session
+      saveSession(token, user);
+
+      // Handle role-based redirection
+      if (redirectUrl && !redirectUrl.startsWith('/api')) {
+        // If redirect target matches role capabilities
+        if (user.role === 'WORKER' && redirectUrl.startsWith('/worker')) {
+          router.push(redirectUrl);
+          return;
+        }
+        if (user.role === 'CUSTOMER' && !redirectUrl.startsWith('/worker')) {
+          router.push(redirectUrl);
+          return;
+        }
+      }
 
       router.push(user.role === 'WORKER' ? '/worker/dashboard' : '/');
     } catch {
@@ -72,6 +106,13 @@ export default function LoginPage() {
           Please select whether you are signing in as a Customer or a Service Professional.
         </p>
       </div>
+
+      {initialNotice && (
+        <div className="flex items-start gap-2 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 shadow-xs">
+          <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+          <span>{initialNotice}</span>
+        </div>
+      )}
 
       {/* Explicit Role Chooser Cards */}
       <div className="space-y-2">
@@ -226,7 +267,7 @@ export default function LoginPage() {
           <div className="pt-2 text-center text-xs text-[#64748b]">
             New to WorkHub?{' '}
             <Link
-              href="/signup"
+              href={`/signup${role === 'WORKER' ? '?role=WORKER' : ''}`}
               className={`font-bold hover:underline ${role === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]'}`}
             >
               Create an Account
@@ -237,5 +278,13 @@ export default function LoginPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="max-w-lg mx-auto py-20 text-center text-sm text-gray-500">Loading sign in...</div>}>
+      <LoginFormContent />
+    </Suspense>
   );
 }

@@ -3,7 +3,20 @@
 import React, { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, MapPin, ShieldCheck, ChevronDown, Menu, X, ArrowLeft, User, LogOut } from 'lucide-react';
+import {
+  Search,
+  MapPin,
+  ShieldCheck,
+  ChevronDown,
+  Menu,
+  X,
+  ArrowLeft,
+  User,
+  LogOut,
+  Briefcase,
+  ArrowLeftRight,
+  Sparkles
+} from 'lucide-react';
 import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
 export default function Navbar() {
@@ -147,16 +160,54 @@ export default function Navbar() {
               Track Job
             </Link>
 
+            {/* UI ROLE SWITCHER BUTTON */}
+            {session?.role === 'WORKER' ? (
+              <Link
+                href="/worker/dashboard"
+                className="px-3.5 py-2 text-xs font-bold rounded-xl bg-[#0d9488] hover:bg-[#0b7c73] text-white shadow-xs transition-all flex items-center gap-1.5 group"
+                title="Go to your Service Partner Dashboard"
+              >
+                <Briefcase className="w-3.5 h-3.5 text-[#99f6e4] group-hover:scale-110 transition-transform" />
+                <span>Worker Dashboard</span>
+              </Link>
+            ) : session?.role === 'CUSTOMER' ? (
+              <Link
+                href="/worker/dashboard"
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#091426] border border-[#cbd5e1] transition-all flex items-center gap-1.5"
+                title="Switch to Worker Mode"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 text-[#0051d5]" />
+                <span>Switch to Worker</span>
+              </Link>
+            ) : (
+              <Link
+                href="/login?role=WORKER"
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] transition-all flex items-center gap-1.5"
+                title="Worker Portal"
+              >
+                <Briefcase className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Worker Portal</span>
+              </Link>
+            )}
+
             {/* Login / Account Buttons */}
             {session ? (
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-[#091426] bg-[#f1f5f9] rounded-lg border border-[#e2e8f0]">
-                  <User className="w-4 h-4 text-[#0051d5]" />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#091426] bg-[#f1f5f9] rounded-xl border border-[#e2e8f0]">
+                  <User className="w-3.5 h-3.5 text-[#0051d5]" />
                   <span className="max-w-28 truncate">{session.name || session.email}</span>
-                </span>
+                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                    session.role === 'WORKER'
+                      ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
+                      : 'bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe]'
+                  }`}>
+                    {session.role === 'WORKER' ? 'Pro' : 'Customer'}
+                  </span>
+                </div>
                 <button
                   onClick={() => { clearSession(); router.push('/login'); }}
-                  className="px-3.5 py-2 text-sm font-semibold text-[#64748b] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                  className="p-2 text-xs font-semibold text-[#64748b] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center justify-center"
+                  title="Log out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -182,18 +233,36 @@ export default function Navbar() {
 
           {/* Mobile hamburger */}
           <div className="flex md:hidden items-center gap-2">
+            {/* Mobile quick role switcher icon/button */}
+            {session?.role === 'WORKER' ? (
+              <Link
+                href="/worker/dashboard"
+                className="px-2.5 py-1 text-xs font-bold bg-[#0d9488] text-white rounded-lg flex items-center gap-1"
+              >
+                <Briefcase className="w-3 h-3" />
+                <span>Pro</span>
+              </Link>
+            ) : (
+              <Link
+                href="/worker/dashboard"
+                className="px-2.5 py-1 text-xs font-bold bg-[#f1f5f9] text-[#091426] border border-[#cbd5e1] rounded-lg flex items-center gap-1"
+              >
+                <ArrowLeftRight className="w-3 h-3 text-[#0051d5]" />
+                <span>Worker</span>
+              </Link>
+            )}
+
             {session ? (
               <button
                 onClick={() => { clearSession(); router.push('/login'); }}
-                className="px-3 py-1.5 text-xs font-bold text-[#64748b] hover:text-red-600 bg-[#f1f5f9] rounded-lg flex items-center gap-1"
+                className="px-2.5 py-1 text-xs font-bold text-[#64748b] hover:text-red-600 bg-[#f1f5f9] rounded-lg flex items-center gap-1"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                Logout
               </button>
             ) : (
               <Link
                 href="/login"
-                className="px-3 py-1.5 text-xs font-bold text-[#0051d5] bg-[#eff6ff] rounded-lg"
+                className="px-3 py-1 text-xs font-bold text-[#0051d5] bg-[#eff6ff] rounded-lg"
               >
                 Log In
               </Link>
@@ -235,11 +304,34 @@ export default function Navbar() {
               >
                 Track Live Booking
               </Link>
+
+              {/* Mobile UI Role Switcher Button */}
+              <Link
+                href="/worker/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#f0fdfa] border border-[#a7f3d0] text-xs font-bold text-[#0d9488]"
+              >
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-[#0d9488]" />
+                  <span>{session?.role === 'WORKER' ? 'Go to Worker Dashboard' : 'Switch to Worker Mode'}</span>
+                </div>
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+              </Link>
+
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f1f5f9]">
                 {session ? (
-                  <div className="col-span-2 flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl">
-                    <User className="w-4 h-4 text-[#0051d5]" />
-                    <span className="truncate">{session.name || session.email}</span>
+                  <div className="col-span-2 flex items-center justify-between px-3 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-[#0051d5]" />
+                      <span className="truncate">{session.name || session.email}</span>
+                    </div>
+                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                      session.role === 'WORKER'
+                        ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
+                        : 'bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe]'
+                    }`}>
+                      {session.role === 'WORKER' ? 'Pro' : 'Customer'}
+                    </span>
                   </div>
                 ) : (
                   <>
