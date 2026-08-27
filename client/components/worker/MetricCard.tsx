@@ -19,39 +19,36 @@ export default function MetricCard({
   variant = 'neutral',
 }: MetricCardProps) {
   const iconVariants = {
-    primary: 'bg-[rgba(59,130,246,0.12)] text-[#2f68c5] border-transparent',
-    teal: 'bg-[rgba(20,147,67,0.12)] text-[#149343] border-transparent',
-    amber: 'bg-[rgba(245,166,35,0.12)] text-[#875b13] border-transparent',
-    neutral: 'bg-[#eae4db] text-[#606060] border-transparent',
+    primary: 'bg-[#eff6ff] text-[#0051d5] border-[#dbeafe]',
+    teal: 'bg-[#ecfdf5] text-[#0d9488] border-[#ccfbf1]',
+    amber: 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]',
+    neutral: 'bg-[#f1f5f9] text-[#334155] border-[#e2e8f0]',
   };
 
   return (
-    <div className="p-5 rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] space-y-3">
+    <div className="p-5 rounded-2xl bg-[#ffffff] border border-[#e2e8f0] shadow-xs space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#606060]">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#64748b] font-geist">
           {title}
         </span>
         <div
-          className={`w-9 h-9 rounded-lg border flex items-center justify-center ${iconVariants[variant]}`}
+          className={`w-9 h-9 rounded-xl border flex items-center justify-center ${iconVariants[variant]}`}
         >
           <Icon className="w-4 h-4" />
         </div>
       </div>
 
       <div className="space-y-0.5">
-        <div
-          className="text-2xl sm:text-3xl font-black text-[#2a2a2a] tracking-tight"
-          style={{ fontFamily: 'var(--gesso-font-display)', fontWeight: 900 }}
-        >
+        <div className="text-2xl sm:text-3xl font-extrabold font-geist text-[#091426] tracking-tight">
           {value}
         </div>
         {subtitle && (
-          <p className="text-xs text-[#606060] font-medium">{subtitle}</p>
+          <p className="text-xs text-[#64748b] font-medium">{subtitle}</p>
         )}
       </div>
 
       {trend && (
-        <div className="pt-2 border-t border-black/5 text-[11px] font-semibold text-[#149343] flex items-center gap-1">
+        <div className="pt-2 border-t border-[#f1f5f9] text-[11px] font-semibold text-[#0d9488] flex items-center gap-1 font-geist">
           <span>{trend}</span>
         </div>
       )}

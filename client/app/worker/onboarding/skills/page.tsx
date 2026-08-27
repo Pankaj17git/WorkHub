@@ -3,14 +3,14 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Zap,
-  Wrench,
-  Wind,
-  Hammer,
-  Check,
-  ArrowRight,
-  ShieldCheck,
+import { 
+  Zap, 
+  Wrench, 
+  Wind, 
+  Hammer, 
+  Check, 
+  ArrowRight, 
+  ShieldCheck, 
   Sparkles,
   Plus
 } from 'lucide-react';
@@ -79,28 +79,25 @@ export default function WorkerSkillsOnboardingPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4 space-y-8">
-
+      
       {/* Top Banner */}
       <div className="text-center space-y-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#875b13]">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#0051d5] font-geist">
           Step 2 of 3 • Skill Profile Setup
         </span>
-        <h1
-          className="text-2xl sm:text-3xl font-extrabold text-[#2a2a2a] tracking-tight"
-          style={{ fontFamily: 'var(--gesso-font-display)' }}
-        >
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#091426] tracking-tight">
           Select Your Trade Competencies & Base Rates
         </h1>
-        <p className="text-xs sm:text-sm text-[#606060] max-w-md mx-auto">
+        <p className="text-xs sm:text-sm text-[#64748b] max-w-md mx-auto">
           We match you with nearby customer job requests matching your selected skills.
         </p>
       </div>
 
-      <div className="bg-white rounded-xl p-6 sm:p-10 shadow-[0_1px_2px_rgba(0,0,0,0.04)] space-y-8">
-
+      <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-3xl p-6 sm:p-10 shadow-sm space-y-8">
+        
         {/* 1. Primary Trade */}
         <div className="space-y-3">
-          <label className="text-sm font-bold text-[#2a2a2a] block">
+          <label className="text-sm font-bold text-[#091426] block">
             1. Select Your Primary Trade
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -113,10 +110,10 @@ export default function WorkerSkillsOnboardingPage() {
                   key={t.name}
                   type="button"
                   onClick={() => setSelectedTrade(t.name)}
-                  className={`p-4 rounded-xl border text-center transition-all flex flex-col items-center gap-2 ${
+                  className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center gap-2 ${
                     isSelected
-                      ? 'border-[#f5a623] bg-[rgba(245,166,35,0.12)] text-[#875b13] font-bold'
-                      : 'border-black/10 bg-white text-[#606060] hover:bg-[#f4eee4]'
+                      ? 'border-[#0051d5] bg-[#eff6ff] text-[#0051d5] font-bold shadow-xs'
+                      : 'border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8f9ff]'
                   }`}
                 >
                   <Icon className="w-6 h-6" />
@@ -128,9 +125,9 @@ export default function WorkerSkillsOnboardingPage() {
         </div>
 
         {/* 2. Sub-Skills Matrix */}
-        <div className="space-y-3 pt-4 border-t border-black/5">
+        <div className="space-y-3 pt-4 border-t border-[#f1f5f9]">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-bold text-[#2a2a2a] block">
+            <label className="text-sm font-bold text-[#091426] block">
               2. Choose Specialized Skills ({selectedSkills.length} Selected)
             </label>
           </div>
@@ -146,11 +143,11 @@ export default function WorkerSkillsOnboardingPage() {
                   onClick={() => toggleSkill(skill)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
                     isSelected
-                      ? 'bg-[#2a2a2a] text-white border border-[#2a2a2a]'
-                      : 'bg-white text-[#606060] border border-black/10 hover:border-[#bcbcbc]'
+                      ? 'bg-[#091426] text-white border border-[#091426] shadow-xs'
+                      : 'bg-[#f8f9ff] text-[#334155] border border-[#e2e8f0] hover:border-[#cbd5e1]'
                   }`}
                 >
-                  {isSelected && <Check className="w-3.5 h-3.5 text-[#f5a623] stroke-[3]" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-[#38bdf8] stroke-[3]" />}
                   <span>{skill}</span>
                 </button>
               );
@@ -159,9 +156,9 @@ export default function WorkerSkillsOnboardingPage() {
         </div>
 
         {/* 3. Base Hourly / Visit Rate */}
-        <div className="space-y-3 pt-4 border-t border-black/5">
+        <div className="space-y-3 pt-4 border-t border-[#f1f5f9]">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-bold text-[#2a2a2a] block">
+            <label className="text-sm font-bold text-[#091426] block">
               3. Default Base Visit Rate (₹)
             </label>
             <PriceTag amount={baseHourlyRate} size="lg" />
@@ -174,9 +171,9 @@ export default function WorkerSkillsOnboardingPage() {
             step="50"
             value={baseHourlyRate}
             onChange={(e) => setBaseHourlyRate(Number(e.target.value))}
-            className="w-full h-2 bg-[#eae4db] rounded-lg appearance-none cursor-pointer accent-[#f5a623]"
+            className="w-full h-2 bg-[#e2e8f0] rounded-lg appearance-none cursor-pointer accent-[#0051d5]"
           />
-          <div className="flex justify-between text-[11px] text-[#606060]">
+          <div className="flex justify-between text-[11px] text-[#64748b] font-geist">
             <span>₹199 (Entry)</span>
             <span>₹500 (Standard)</span>
             <span>₹1,200+ (Master)</span>
@@ -187,7 +184,7 @@ export default function WorkerSkillsOnboardingPage() {
         <div className="pt-4">
           <button
             onClick={handleFinishOnboarding}
-            className="w-full py-3.5 px-4 bg-[#f5a623] hover:brightness-95 text-black font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-4 bg-[#0051d5] hover:bg-[#0042b0] text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
           >
             <span>Complete Setup & Enter Dashboard</span>
             <ArrowRight className="w-4 h-4" />
