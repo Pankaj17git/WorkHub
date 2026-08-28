@@ -64,210 +64,193 @@ export default function BookingStep1Page() {
   };
 
   return (
-    <div
-      className="min-h-screen bg-[#f4eee4]"
-      style={{ fontFamily: 'var(--gesso-font-body)' }}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      
+      {/* Header breadcrumb */}
+      <div className="flex items-center gap-2 text-xs font-semibold text-[#64748b]">
+        <Link href={`/pro/${pro.id}`} className="hover:text-[#091426] flex items-center gap-1">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to {pro.name}</span>
+        </Link>
+        <span>/</span>
+        <span className="text-[#091426]">Step 1 of 2: Schedule & Address</span>
+      </div>
+
+      {/* Stepper indicator banner */}
+      <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-4 sm:p-6 shadow-sm flex items-center justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#091426]">
+            Configure Your Service Request
+          </h1>
+          <p className="text-xs text-[#64748b] mt-0.5">
+            Choose your required tasks, preferred appointment window, and service address.
+          </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2">
+          <span className="w-8 h-8 rounded-full bg-[#0051d5] text-white flex items-center justify-center text-xs font-bold font-geist">
+            1
+          </span>
+          <span className="text-xs font-semibold text-[#0051d5]">Service & Time</span>
+          <span className="w-6 h-px bg-[#cbd5e1]" />
+          <span className="w-8 h-8 rounded-full bg-[#f1f5f9] text-[#64748b] flex items-center justify-center text-xs font-bold font-geist">
+            2
+          </span>
+          <span className="text-xs font-medium text-[#64748b]">Review & Pay</span>
+        </div>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
-        {/* Header breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-semibold text-[#606060]">
-          <Link href={`/pro/${pro.id}`} className="hover:text-[#2a2a2a] flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to {pro.name}</span>
-          </Link>
-          <span>/</span>
-          <span className="text-[#2a2a2a]">Step 1 of 2: Schedule & Address</span>
-        </div>
-
-        {/* Stepper indicator banner */}
-        <div className="bg-[#ffffff] rounded-xl p-4 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex items-center justify-between">
-          <div>
-            <h1
-              className="text-xl sm:text-2xl font-extrabold text-[#2a2a2a]"
-              style={{ fontFamily: 'var(--gesso-font-display)' }}
-            >
-              Configure Your Service Request
-            </h1>
-            <p className="text-xs text-[#606060] mt-0.5">
-              Choose your required tasks, preferred appointment window, and service address.
-            </p>
-          </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-xs font-bold">
-              1
-            </span>
-            <span className="text-xs font-semibold text-[#2a2a2a]">Service & Time</span>
-            <span className="w-6 h-px bg-[#dddddd]" />
-            <span className="w-8 h-8 rounded-full bg-[#eae4db] text-[#606060] flex items-center justify-center text-xs font-bold">
-              2
-            </span>
-            <span className="text-xs font-medium text-[#606060]">Review & Pay</span>
-          </div>
-        </div>
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left Form (2 cols) */}
+        <div className="lg:col-span-2 space-y-6">
           
-          {/* Left Form (2 cols) */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* 1. Services to perform */}
-            <div className="bg-[#ffffff] rounded-xl p-6 space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-              <div className="flex items-center justify-between">
-                <h3
-                  className="text-base font-bold text-[#2a2a2a] flex items-center gap-2"
-                  style={{ fontFamily: 'var(--gesso-font-display)' }}
-                >
-                  <span className="w-6 h-6 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-xs font-bold">
-                    1
-                  </span>
-                  <span>Select Services Needed</span>
-                </h3>
-                <span className="text-xs text-[#606060]">
-                  {selectedServices.length} Selected
+          {/* 1. Services to perform */}
+          <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-[#091426] flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#eff6ff] text-[#0051d5] flex items-center justify-center text-xs font-bold font-geist">
+                  1
                 </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {pro.services.map((srv) => {
-                  const isChecked = selectedServices.some((s) => s.id === srv.id);
-                  return (
-                    <div
-                      key={srv.id}
-                      onClick={() => toggleService(srv)}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                        isChecked
-                          ? 'border-[#f5a623] bg-[rgba(245,166,35,0.12)]'
-                          : 'border-[#eae4db] bg-white hover:bg-[#f4eee4]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-4 h-4 rounded border flex items-center justify-center ${
-                            isChecked ? 'bg-[#f5a623] border-[#f5a623] text-black' : 'border-[#bcbcbc]'
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                        <span className="text-xs sm:text-sm font-semibold text-[#2a2a2a]">
-                          {srv.name}
-                        </span>
-                      </div>
-                      <PriceTag amount={srv.price} size="sm" />
-                    </div>
-                  );
-                })}
-              </div>
+                <span>Select Services Needed</span>
+              </h3>
+              <span className="text-xs text-[#64748b] font-geist">
+                {selectedServices.length} Selected
+              </span>
             </div>
 
-            {/* 2. Schedule appointment */}
-            <div className="bg-[#ffffff] rounded-xl p-6 space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-              <h3
-                className="text-base font-bold text-[#2a2a2a] flex items-center gap-2"
-                style={{ fontFamily: 'var(--gesso-font-display)' }}
-              >
-                <span className="w-6 h-6 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-xs font-bold">
-                  2
-                </span>
-                <span>Select Date & Time Window</span>
-              </h3>
-
-              <TimeSlotPicker
-                selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
-                selectedTime={selectedTime}
-                onSelectTime={setSelectedTime}
-              />
-            </div>
-
-            {/* 3. Address & Contact */}
-            <div className="bg-[#ffffff] rounded-xl p-6 space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-              <h3
-                className="text-base font-bold text-[#2a2a2a] flex items-center gap-2"
-                style={{ fontFamily: 'var(--gesso-font-display)' }}
-              >
-                <span className="w-6 h-6 rounded-full bg-[#3b82f6] text-white flex items-center justify-center text-xs font-bold">
-                  3
-                </span>
-                <span>Service Location & Instructions</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-semibold text-[#606060] flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#2f68c5]" />
-                    <span>Street Address / House Number</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="whl-input w-full px-3.5 py-2.5 text-xs sm:text-sm"
-                    placeholder="e.g. Flat 302, Palm Heights, Sector 35"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[#606060]">City / Region</label>
-                  <select
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="whl-input w-full px-3.5 py-2.5 text-xs sm:text-sm"
+            <div className="grid grid-cols-1 gap-2.5">
+              {pro.services.map((srv) => {
+                const isChecked = selectedServices.some((s) => s.id === srv.id);
+                return (
+                  <div
+                    key={srv.id}
+                    onClick={() => toggleService(srv)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                      isChecked
+                        ? 'border-[#0051d5] bg-[#eff6ff]/30'
+                        : 'border-[#e2e8f0] bg-white hover:bg-[#f8f9ff]'
+                    }`}
                   >
-                    <option value="Chandigarh">Chandigarh</option>
-                    <option value="Mohali">Mohali</option>
-                    <option value="Panchkula">Panchkula</option>
-                    <option value="Zirakpur">Zirakpur</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[#606060] flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-[#2f68c5]" />
-                    <span>Contact Mobile Number</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={contactNumber}
-                    onChange={(e) => setContactNumber(e.target.value)}
-                    className="whl-input w-full px-3.5 py-2.5 text-xs sm:text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-semibold text-[#606060] flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-[#606060]" />
-                    <span>Special Note / Symptoms (Optional)</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    className="whl-input w-full px-3.5 py-2.5 text-xs sm:text-sm"
-                    placeholder="e.g. Main MCB trips when AC turns on, please bring spare 32A breaker."
-                  />
-                </div>
-              </div>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          isChecked ? 'bg-[#0051d5] border-[#0051d5] text-white' : 'border-[#cbd5e1]'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="text-xs sm:text-sm font-semibold text-[#091426]">
+                        {srv.name}
+                      </span>
+                    </div>
+                    <PriceTag amount={srv.price} size="sm" />
+                  </div>
+                );
+              })}
             </div>
-
           </div>
 
-          {/* Right Sticky Summary (1 col) */}
-          <div className="lg:col-span-1">
-            <BookingSummaryCard
-              pro={pro}
-              selectedServices={selectedServices}
-              date={selectedDate}
-              time={selectedTime}
-              ctaText="Proceed to Review & Pay"
-              onProceed={handleProceedToConfirm}
+          {/* 2. Schedule appointment */}
+          <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-6 space-y-4">
+            <h3 className="text-base font-bold text-[#091426] flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-[#eff6ff] text-[#0051d5] flex items-center justify-center text-xs font-bold font-geist">
+                2
+              </span>
+              <span>Select Date & Time Window</span>
+            </h3>
+
+            <TimeSlotPicker
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              selectedTime={selectedTime}
+              onSelectTime={setSelectedTime}
             />
           </div>
 
+          {/* 3. Address & Contact */}
+          <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-6 space-y-4">
+            <h3 className="text-base font-bold text-[#091426] flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-[#eff6ff] text-[#0051d5] flex items-center justify-center text-xs font-bold font-geist">
+                3
+              </span>
+              <span>Service Location & Instructions</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-xs font-semibold text-[#334155] flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#0051d5]" />
+                  <span>Street Address / House Number</span>
+                </label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0051d5]"
+                  placeholder="e.g. Flat 302, Palm Heights, Sector 35"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#334155]">City / Region</label>
+                <select
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0051d5]"
+                >
+                  <option value="Chandigarh">Chandigarh</option>
+                  <option value="Mohali">Mohali</option>
+                  <option value="Panchkula">Panchkula</option>
+                  <option value="Zirakpur">Zirakpur</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#334155] flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-[#0051d5]" />
+                  <span>Contact Mobile Number</span>
+                </label>
+                <input
+                  type="text"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0051d5] font-geist"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-xs font-semibold text-[#334155] flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-[#64748b]" />
+                  <span>Special Note / Symptoms (Optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0051d5]"
+                  placeholder="e.g. Main MCB trips when AC turns on, please bring spare 32A breaker."
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Right Sticky Summary (1 col) */}
+        <div className="lg:col-span-1">
+          <BookingSummaryCard
+            pro={pro}
+            selectedServices={selectedServices}
+            date={selectedDate}
+            time={selectedTime}
+            ctaText="Proceed to Review & Pay"
+            onProceed={handleProceedToConfirm}
+          />
         </div>
 
       </div>
+
     </div>
   );
 }
