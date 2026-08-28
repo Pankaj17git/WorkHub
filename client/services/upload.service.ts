@@ -8,8 +8,16 @@ const BUCKET = process.env.SUPABASE_BUCKET || "uploads";
 export const uploadService = {
   async uploadFile(file: File, userId: bigint) {
     validateFile(file);
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    const key = `${randomUUID()}-${file.name}`;
+
+    // Sanitize filename
+    const sanitizedFileName = file.name
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9._-]/g, '');
+
+    const key = `${randomUUID()}-${sanitizedFileName}`;
 
     const { error } = await getSupabaseAdmin().storage
       .from(BUCKET)
@@ -20,30 +28,36 @@ export const uploadService = {
 
     if (error) throw new Error(error.message);
 
-    // For a public bucket:
     const { data: publicUrlData } = getSupabaseAdmin().storage
       .from(BUCKET)
       .getPublicUrl(key);
-    const { data, error:bucketError } = await getSupabaseAdmin().storage.listBuckets();
-    console.log(JSON.stringify(data, null, 2), bucketError);
-    console.log('BUCKET used for upload:', BUCKET);
-    console.log('Generated public URL:', publicUrlData.publicUrl);
 
-    const record = await prisma.upload.create({
-      data: {
-        key,
-        url: publicUrlData.publicUrl,
-        fileName: file.name,
-        mimeType: file.type,
-        size: file.size,
-        userId,
-      },
-    });
-
-    return record;
+    try {
+      const record = await prisma.upload.create({
+        data: {
+          key,
+          url: publicUrlData.publicUrl,
+          fileName: file.name,
+          mimeType: file.type,
+          size: file.size,
+          userId,
+        },
+      });
+      return record;
+    } catch (dbError) {
+      // Roll back the orphaned storage object if the DB write fails.
+      await getSupabaseAdmin()
+        .storage.from(BUCKET)
+        .remove([key])
+        .catch((cleanupErr) =>
+          console.error("Failed to clean up orphaned upload after DB error:", cleanupErr)
+        );
+      throw dbError;
+    }
   },
 
-  async deleteFile(key: string) {
+  async deleteFile(url: string) {
+    const key = url.split("/uploads/")[1];
     await getSupabaseAdmin().storage.from(BUCKET).remove([key]);
     await prisma.upload.delete({ where: { key } });
   },
