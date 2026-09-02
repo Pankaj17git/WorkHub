@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, signToken, loginSchema, registerSchema } from "@/app/api/auth/auth";
 import { createOtp, verifyOtp } from "@/lib/otp";
 import { sendOtpEmail } from "@/lib/email";
+import { status } from "@/constants/statusCodes";
 import { z } from "zod";
 
 const sendOtpSchema = z
@@ -31,37 +32,53 @@ const verifyOtpSchema = z
 
 export const authController = {
   async login(request: Request) {
-    const body = await request.json();
-    const result = loginSchema.safeParse(body);
+    try {
+      const body = await request.json();
+      const result = loginSchema.safeParse(body);
 
-    if (!result.success) {
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            error: result.error.issues[0].message,
+          },
+          { status: status.BAD_REQUEST }
+        );
+      }
+
+      const { email, password } = result.data;
+      const emailLowerCase = email.toLowerCase();
+
+      const user = await prisma.user.findUnique({ where: { email: emailLowerCase } });
+      if (!user) {
+        return NextResponse.json(
+          { error: "Invalid credentials" },
+          { status: status.UNAUTHORIZED }
+        );
+      }
+
+      const valid = await verifyPassword(password, user.password);
+      if (!valid) {
+        return NextResponse.json(
+          { error: "Invalid credentials" },
+          { status: status.UNAUTHORIZED }
+        );
+      }
+
+      const token = signToken({ userId: user.id.toString(), email: user.email, role: user.role });
+
       return NextResponse.json(
         {
-          error: result.error.issues[0].message,
+          user: { id: user.id.toString(), email: user.email, name: user.name, role: user.role },
+          token,
         },
-        { status: 400 }
+        { status: status.OK }
+      );
+    } catch (error: any) {
+      return NextResponse.json(
+        { error: error.message || "Login failed" },
+        { status: status.INTERNAL_SERVER_ERROR }
       );
     }
-
-    const { email, password } = result.data;
-    const emailLowerCase = email.toLowerCase();
-
-    const user = await prisma.user.findUnique({ where: { email: emailLowerCase } });
-    if (!user) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-    }
-
-    const valid = await verifyPassword(password, user.password);
-    if (!valid) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-    }
-
-    const token = signToken({ userId: user.id.toString(), email: user.email, role: user.role });
-
-    return NextResponse.json({
-      user: { id: user.id.toString(), email: user.email, name: user.name, role: user.role },
-      token,
-    });
   },
 
   async register(request: Request) {
@@ -74,7 +91,7 @@ export const authController = {
           {
             error: result.error.issues[0].message,
           },
-          { status: 400 }
+          { status: status.BAD_REQUEST }
         );
       }
 
@@ -85,7 +102,7 @@ export const authController = {
       if (existing) {
         return NextResponse.json(
           { error: "User with this email already exists" },
-          { status: 409 }
+          { status: status.CONFLICT }
         );
       }
 
@@ -102,6 +119,15 @@ export const authController = {
         data: { email: emailLowerCase, password: hashed, name, role, phone, roleId: roleRecord.id },
       });
 
+      // Generate and store OTP in `otps` table
+      const { plainOtp } = await createOtp({ userId: user.id, length: 6 });
+
+      // Target Email dispatch
+      let emailResult: { sent: boolean; method: string; reason?: string } = { sent: false, method: "none" };
+      if (email && !email.endsWith("@phone.workhub")) {
+        emailResult = await sendOtpEmail(email, plainOtp);
+      }
+
       let token = "";
       try {
         token = signToken({ userId: user.id.toString(), email: emailLowerCase, role: user.role });
@@ -115,12 +141,12 @@ export const authController = {
           user: { id: user.id.toString(), email: emailLowerCase, name: user.name, phone: user.phone, role: user.role },
           token,
         },
-        { status: 201 }
+        { status: status.CREATED }
       );
     } catch (error: any) {
       return NextResponse.json(
         { error: error.message || "Registration failed" },
-        { status: 500 }
+        { status: status.INTERNAL_SERVER_ERROR }
       );
     }
   },
@@ -133,7 +159,7 @@ export const authController = {
       if (!result.success) {
         return NextResponse.json(
           { error: result.error.issues[0]?.message || "Invalid parameters" },
-          { status: 400 }
+          { status: status.BAD_REQUEST }
         );
       }
 
@@ -172,7 +198,10 @@ export const authController = {
       }
 
       if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: status.NOT_FOUND }
+        );
       }
 
       // Generate and store OTP in `otps` table
@@ -184,16 +213,22 @@ export const authController = {
         emailResult = await sendOtpEmail(user.email, plainOtp);
       }
 
-      return NextResponse.json({
-        message: "OTP generated successfully",
-        otpId: otpRecord.id.toString(),
-        expiresAt: otpRecord.expiresAt,
-        emailSent: emailResult.sent,
-        emailNotice: emailResult.reason || undefined,
-        otp: plainOtp,
-      });
+      return NextResponse.json(
+        {
+          message: "OTP generated successfully",
+          otpId: otpRecord.id.toString(),
+          expiresAt: otpRecord.expiresAt,
+          emailSent: emailResult.sent,
+          emailNotice: emailResult.reason || undefined,
+          otp: plainOtp,
+        },
+        { status: status.OK }
+      );
     } catch (error: any) {
-      return NextResponse.json({ error: error.message || "Failed to send OTP" }, { status: 500 });
+      return NextResponse.json(
+        { error: error.message || "Failed to send OTP" },
+        { status: status.INTERNAL_SERVER_ERROR }
+      );
     }
   },
 
@@ -203,7 +238,10 @@ export const authController = {
       const result = verifyOtpSchema.safeParse(body);
 
       if (!result.success) {
-        return NextResponse.json({ error: result.error.issues[0]?.message || "Invalid input" }, { status: 400 });
+        return NextResponse.json(
+          { error: result.error.issues[0]?.message || "Invalid input" },
+          { status: status.BAD_REQUEST }
+        );
       }
 
       const { userId: inputUserId, email, phone, otp } = result.data;
@@ -219,13 +257,19 @@ export const authController = {
       }
 
       if (!targetUser) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: status.NOT_FOUND }
+        );
       }
 
       const verification = await verifyOtp({ userId: targetUser.id, otp });
 
       if (!verification.success) {
-        return NextResponse.json({ error: verification.message }, { status: 400 });
+        return NextResponse.json(
+          { error: verification.message },
+          { status: status.BAD_REQUEST }
+        );
       }
 
       // Mark email as verified on successful OTP verification
@@ -248,20 +292,26 @@ export const authController = {
         // JWT secret missing in env fallback
       }
 
-      return NextResponse.json({
-        message: verification.message,
-        verified: true,
-        token,
-        user: {
-          id: targetUser.id.toString(),
-          email: targetUser.email,
-          name: targetUser.name,
-          phone: targetUser.phone,
-          role: targetUser.role,
+      return NextResponse.json(
+        {
+          message: verification.message,
+          verified: true,
+          token,
+          user: {
+            id: targetUser.id.toString(),
+            email: targetUser.email,
+            name: targetUser.name,
+            phone: targetUser.phone,
+            role: targetUser.role,
+          },
         },
-      });
+        { status: status.OK }
+      );
     } catch (error: any) {
-      return NextResponse.json({ error: error.message || "Failed to verify OTP" }, { status: 500 });
+      return NextResponse.json(
+        { error: error.message || "Failed to verify OTP" },
+        { status: status.INTERNAL_SERVER_ERROR }
+      );
     }
   },
 
@@ -272,7 +322,7 @@ export const authController = {
       if (!phone) {
         return NextResponse.json(
           { error: "Phone number is required" },
-          { status: 400 }
+          { status: status.BAD_REQUEST }
         );
       }
 
@@ -318,22 +368,25 @@ export const authController = {
         // Secret fallback
       }
 
-      return NextResponse.json({
-        message: "Firebase Phone Authentication successful",
-        token,
-        user: {
-          id: user.id.toString(),
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
+      return NextResponse.json(
+        {
+          message: "Firebase Phone Authentication successful",
+          token,
+          user: {
+            id: user.id.toString(),
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+          },
         },
-      });
+        { status: status.OK }
+      );
     } catch (error: any) {
       console.error("Firebase Auth Session Error:", error);
       return NextResponse.json(
         { error: error.message || "Failed to create session" },
-        { status: 500 }
+        { status: status.INTERNAL_SERVER_ERROR }
       );
     }
   },

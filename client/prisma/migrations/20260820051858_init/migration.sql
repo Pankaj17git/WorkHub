@@ -4,7 +4,7 @@ CREATE TABLE `users` (
     `email` VARCHAR(255) NOT NULL,
     `name` VARCHAR(255) NULL,
     `password_hash` VARCHAR(191) NOT NULL,
-    `role` VARCHAR(20) NOT NULL DEFAULT 'USER',
+    `role` VARCHAR(20) NOT NULL DEFAULT 'CUSTOMER',
     `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     `email_verified_at` TIMESTAMP(6) NULL,
     `deleted_at` TIMESTAMP(6) NULL,
