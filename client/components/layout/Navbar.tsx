@@ -2,7 +2,7 @@
 
 import React, { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   MapPin,
@@ -10,7 +10,6 @@ import {
   ChevronDown,
   Menu,
   X,
-  ArrowLeft,
   User,
   LogOut,
   Briefcase,
@@ -20,77 +19,10 @@ import {
 import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
 export default function Navbar() {
-  const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Chandigarh');
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
-
-  // Check if user is currently on login or signup pages
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
-
-  /* Minimalist Header for Login & Signup Pages */
-  if (isAuthPage) {
-    return (
-      <header className="sticky top-0 z-50 bg-[#ffffff] border-b border-[#e2e8f0]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#091426] to-[#0051d5] flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-105 transition-transform">
-                W<span className="text-[#38bdf8]">H</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-extrabold tracking-tight text-[#091426] leading-none">
-                  Work<span className="text-[#0051d5]">Hub</span>
-                </span>
-                <span className="text-[10px] uppercase font-bold text-[#64748b] tracking-wider font-geist mt-0.5">
-                  Verified Marketplace
-                </span>
-              </div>
-            </Link>
-
-            {/* Right side: Login / Signup links + Return Home */}
-            <div className="flex items-center gap-3">
-              <Link
-                href="/login"
-                className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-colors ${
-                  pathname.includes('login')
-                    ? 'bg-[#f1f5f9] text-[#091426]'
-                    : 'text-[#64748b] hover:text-[#091426]'
-                }`}
-              >
-                Log In
-              </Link>
-
-              <Link
-                href="/signup"
-                className={`px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition-all ${
-                  pathname.includes('signup')
-                    ? 'bg-[#0051d5] text-white shadow-md'
-                    : 'bg-[#eff6ff] text-[#0051d5] hover:bg-[#dbeafe]'
-                }`}
-              >
-                Sign Up
-              </Link>
-
-              <span className="w-px h-5 bg-[#e2e8f0] hidden sm:inline-block" />
-
-              <Link
-                href="/"
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748b] hover:text-[#091426] transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Marketplace</span>
-              </Link>
-            </div>
-
-          </div>
-        </div>
-      </header>
-    );
-  }
 
   /* Full Standard Marketplace Header */
   return (
@@ -160,30 +92,22 @@ export default function Navbar() {
               Track Job
             </Link>
 
-            {/* UI ROLE SWITCHER BUTTON */}
+            {/* Role-aware CTA: workers get their dashboard; everyone else is
+                invited to create a pro account (roles are separate accounts). */}
             {session?.role === 'WORKER' ? (
               <Link
                 href="/worker/dashboard"
-                className="px-3.5 py-2 text-xs font-bold rounded-xl bg-[#0d9488] hover:bg-[#0b7c73] text-white shadow-xs transition-all flex items-center gap-1.5 group"
-                title="Go to your Service Partner Dashboard"
+                className="whl-btn whl-btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5"
+                title="Go to your pro partner dashboard"
               >
-                <Briefcase className="w-3.5 h-3.5 text-[#99f6e4] group-hover:scale-110 transition-transform" />
-                <span>Worker Dashboard</span>
-              </Link>
-            ) : session?.role === 'CUSTOMER' ? (
-              <Link
-                href="/worker/dashboard"
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#091426] border border-[#cbd5e1] transition-all flex items-center gap-1.5"
-                title="Switch to Worker Mode"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5 text-[#0051d5]" />
-                <span>Switch to Worker</span>
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>Worker dashboard</span>
               </Link>
             ) : (
               <Link
-                href="/login?role=WORKER"
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] transition-all flex items-center gap-1.5"
-                title="Worker Portal"
+                href="/signup?role=WORKER"
+                className="whl-btn whl-btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5"
+                title="Create a pro account and start earning"
               >
                 <Briefcase className="w-3.5 h-3.5 text-[#0d9488]" />
                 <span>Worker Portal</span>
