@@ -13,7 +13,6 @@ import {
   User,
   LogOut,
   Briefcase,
-  ArrowLeftRight,
   Sparkles
 } from 'lucide-react';
 import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
@@ -92,25 +91,24 @@ export default function Navbar() {
               Track Job
             </Link>
 
-            {/* Role-aware CTA: workers get their dashboard; everyone else is
-                invited to create a pro account (roles are separate accounts). */}
+            {/* Role-aware CTA: Become a Worker or Worker Dashboard */}
             {session?.role === 'WORKER' ? (
               <Link
                 href="/worker/dashboard"
-                className="whl-btn whl-btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5"
+                className="px-3.5 py-2 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
                 title="Go to your pro partner dashboard"
               >
                 <Briefcase className="w-3.5 h-3.5" />
-                <span>Worker dashboard</span>
+                <span>Worker Dashboard</span>
               </Link>
             ) : (
               <Link
                 href="/signup?role=WORKER"
-                className="whl-btn whl-btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5"
-                title="Create a pro account and start earning"
+                className="px-3.5 py-2 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs group"
+                title="Register as a worker and start earning"
               >
-                <Briefcase className="w-3.5 h-3.5 text-[#0d9488]" />
-                <span>Worker Portal</span>
+                <Briefcase className="w-3.5 h-3.5 text-[#0d9488] group-hover:scale-110 transition-transform" />
+                <span>Become a Worker</span>
               </Link>
             )}
 
@@ -130,14 +128,14 @@ export default function Navbar() {
                 </div>
                 <button
                   onClick={() => { clearSession(); router.push('/login'); }}
-                  className="p-2 text-xs font-semibold text-[#64748b] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center justify-center"
+                  className="p-2 text-xs font-semibold text-[#64748b] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer"
                   title="Log out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <>
+              <div className="flex items-center gap-2">
                 <Link
                   href="/login"
                   className="px-3.5 py-2 text-sm font-semibold text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
@@ -151,35 +149,34 @@ export default function Navbar() {
                 >
                   Sign Up
                 </Link>
-              </>
+              </div>
             )}
           </div>
 
           {/* Mobile hamburger */}
           <div className="flex md:hidden items-center gap-2">
-            {/* Mobile quick role switcher icon/button */}
             {session?.role === 'WORKER' ? (
               <Link
                 href="/worker/dashboard"
                 className="px-2.5 py-1 text-xs font-bold bg-[#0d9488] text-white rounded-lg flex items-center gap-1"
               >
                 <Briefcase className="w-3 h-3" />
-                <span>Pro</span>
+                <span>Dashboard</span>
               </Link>
             ) : (
               <Link
-                href="/worker/dashboard"
-                className="px-2.5 py-1 text-xs font-bold bg-[#f1f5f9] text-[#091426] border border-[#cbd5e1] rounded-lg flex items-center gap-1"
+                href="/signup?role=WORKER"
+                className="px-2.5 py-1 text-xs font-bold bg-[#f0fdfa] text-[#0d9488] border border-[#a7f3d0] rounded-lg flex items-center gap-1"
               >
-                <ArrowLeftRight className="w-3 h-3 text-[#0051d5]" />
-                <span>Worker</span>
+                <Briefcase className="w-3 h-3" />
+                <span>Join as Pro</span>
               </Link>
             )}
 
             {session ? (
               <button
                 onClick={() => { clearSession(); router.push('/login'); }}
-                className="px-2.5 py-1 text-xs font-bold text-[#64748b] hover:text-red-600 bg-[#f1f5f9] rounded-lg flex items-center gap-1"
+                className="px-2.5 py-1 text-xs font-bold text-[#64748b] hover:text-red-600 bg-[#f1f5f9] rounded-lg flex items-center gap-1 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
@@ -193,7 +190,7 @@ export default function Navbar() {
             )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-[#0d1c2e] hover:bg-[#f1f5f9]"
+              className="p-2 rounded-lg text-[#0d1c2e] hover:bg-[#f1f5f9] cursor-pointer"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -229,18 +226,32 @@ export default function Navbar() {
                 Track Live Booking
               </Link>
 
-              {/* Mobile UI Role Switcher Button */}
-              <Link
-                href="/worker/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#f0fdfa] border border-[#a7f3d0] text-xs font-bold text-[#0d9488]"
-              >
-                <div className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-[#0d9488]" />
-                  <span>{session?.role === 'WORKER' ? 'Go to Worker Dashboard' : 'Switch to Worker Mode'}</span>
-                </div>
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-              </Link>
+              {/* Become a Worker / Worker Dashboard Mobile Button */}
+              {session?.role === 'WORKER' ? (
+                <Link
+                  href="/worker/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#f0fdfa] border border-[#a7f3d0] text-xs font-bold text-[#0d9488]"
+                >
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-[#0d9488]" />
+                    <span>Worker Dashboard</span>
+                  </div>
+                  <Sparkles className="w-3.5 h-3.5" />
+                </Link>
+              ) : (
+                <Link
+                  href="/signup?role=WORKER"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#f0fdfa] border border-[#a7f3d0] text-xs font-bold text-[#0d9488]"
+                >
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-[#0d9488]" />
+                    <span>Become a Worker (Earn ₹)</span>
+                  </div>
+                  <Sparkles className="w-3.5 h-3.5" />
+                </Link>
+              )}
 
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f1f5f9]">
                 {session ? (
@@ -262,14 +273,14 @@ export default function Navbar() {
                     <Link
                       href="/login"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full text-center py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl"
+                      className="w-full text-center py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl hover:bg-[#e2e8f0] transition-colors"
                     >
                       Log In
                     </Link>
                     <Link
                       href="/signup"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#0051d5] rounded-xl"
+                      className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#0051d5] rounded-xl hover:bg-[#0042b0] transition-colors"
                     >
                       Sign Up
                     </Link>
