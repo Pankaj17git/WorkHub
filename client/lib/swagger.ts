@@ -6,7 +6,7 @@ const swaggerDefinition = {
     title: "WorkHub API",
     version: "1.0.0",
     description:
-      "WorkHub REST API documentation — Authentication, OTP verification, and session management endpoints.",
+      "WorkHub REST API documentation — Authentication, OTP verification, session management, user profile, and file uploads endpoints.",
     contact: {
       name: "WorkHub Dev Team",
     },
@@ -32,6 +32,14 @@ const swaggerDefinition = {
     {
       name: "Firebase",
       description: "Firebase Phone Auth session sync",
+    },
+    {
+      name: "User",
+      description: "User profile management",
+    },
+    {
+      name: "Uploads",
+      description: "File upload and storage management",
     },
   ],
   paths: {
@@ -410,6 +418,210 @@ const swaggerDefinition = {
         },
       },
     },
+
+    // ─── UPDATE PROFILE ──────────────────────────────────────────
+    "/api/user/update-profile": {
+      patch: {
+        tags: ["User"],
+        summary: "Update user profile image",
+        description:
+          "Uploads a new profile image for the authenticated user and updates their profile in the database. Deletes the previous profile image from storage if present. Requires JWT authentication.",
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["profileImage"],
+                properties: {
+                  profileImage: {
+                    type: "string",
+                    format: "binary",
+                    description: "Profile image file to upload",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Profile updated successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UpdateProfileResponse" },
+                example: {
+                  user: {
+                    id: "1",
+                    profileImage:
+                      "https://xyz.supabase.co/storage/v1/object/public/uploads/1724847000000_avatar.jpg",
+                  },
+                },
+              },
+            },
+          },
+          "400": {
+            description: "No file provided or bad request",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "No file provided" },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid JWT token)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "Unauthorized" },
+              },
+            },
+          },
+          "404": {
+            description: "User not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "User not found" },
+              },
+            },
+          },
+          "500": {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "Profile update failed" },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ─── UPLOADS ────────────────────────────────────────────────
+    "/api/uploads": {
+      post: {
+        tags: ["Uploads"],
+        summary: "Upload a file",
+        description:
+          "Uploads a generic file to storage (Supabase). Requires JWT authentication.",
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["file"],
+                properties: {
+                  file: {
+                    type: "string",
+                    format: "binary",
+                    description: "File to upload",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "File uploaded successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UploadFileResponse" },
+                example: {
+                  id: "101",
+                  url: "https://xyz.supabase.co/storage/v1/object/public/uploads/1724847000000_doc.pdf",
+                  filename: "doc.pdf",
+                  mimeType: "application/pdf",
+                  size: 204800,
+                  userId: "1",
+                  createdAt: "2026-08-28T12:00:00.000Z",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "No file provided",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "No file provided" },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "Unauthorized" },
+              },
+            },
+          },
+          "500": {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "File upload failed" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        tags: ["Uploads"],
+        summary: "Delete a file",
+        description:
+          "Deletes a file from storage using its key or URL. Requires JWT authentication.",
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/DeleteFileRequest" },
+              example: {
+                key: "https://xyz.supabase.co/storage/v1/object/public/uploads/1724847000000_doc.pdf",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "File deleted successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/DeleteFileResponse" },
+                example: { success: true },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "Unauthorized" },
+              },
+            },
+          },
+          "500": {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "Failed to delete file" },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -546,6 +758,17 @@ const swaggerDefinition = {
         },
       },
 
+      DeleteFileRequest: {
+        type: "object",
+        required: ["key"],
+        properties: {
+          key: {
+            type: "string",
+            description: "Storage key or URL of the file to delete",
+          },
+        },
+      },
+
       // ─── RESPONSE SCHEMAS ───────────────────────────────────────
       UserInfo: {
         type: "object",
@@ -555,6 +778,7 @@ const swaggerDefinition = {
           name: { type: "string", nullable: true },
           phone: { type: "string", nullable: true },
           role: { type: "string" },
+          profileImage: { type: "string", nullable: true },
         },
       },
 
@@ -623,6 +847,46 @@ const swaggerDefinition = {
             description: "JWT token (valid 7 days)",
           },
           user: { $ref: "#/components/schemas/UserInfo" },
+        },
+      },
+
+      UpdateProfileResponse: {
+        type: "object",
+        properties: {
+          user: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "User ID (BigInt as string)" },
+              profileImage: {
+                type: "string",
+                description: "URL of the uploaded profile image",
+              },
+            },
+          },
+        },
+      },
+
+      UploadFileResponse: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Upload record ID" },
+          url: { type: "string", description: "Public file URL" },
+          filename: { type: "string", description: "Original filename" },
+          mimeType: { type: "string", description: "MIME type" },
+          size: { type: "integer", description: "File size in bytes" },
+          userId: { type: "string", description: "Uploader user ID" },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            description: "Upload timestamp",
+          },
+        },
+      },
+
+      DeleteFileResponse: {
+        type: "object",
+        properties: {
+          success: { type: "boolean" },
         },
       },
 
