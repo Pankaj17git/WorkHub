@@ -96,12 +96,12 @@ export default function OtpPinInput({
             onChange={(e) => handleChange(index, e)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={handlePaste}
-            className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold font-geist rounded-xl border-2 transition-all outline-none ${
+            className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold font-geist rounded-2xl border-2 transition-all outline-none ${
               hasError
-                ? 'border-[#DC2626] bg-[#DC2626]/10 text-[#DC2626] focus:ring-4 focus:ring-[#DC2626]/10'
+                ? 'border-red-500 bg-red-50 text-red-700 focus:ring-4 focus:ring-red-500/10'
                 : isFilled
-                ? 'border-[#f5a623] bg-white text-[#2a2a2a]'
-                : 'border-[#bcbcbc] bg-white text-[#2a2a2a] hover:border-[#9c9c9c] focus:border-[#f5a623] focus:ring-4 focus:ring-[#f5a623]/15'
+                ? 'border-[#0051d5] bg-[#f8f9ff] text-[#091426] shadow-xs'
+                : 'border-[#cbd5e1] bg-[#ffffff] text-[#091426] hover:border-[#94a3b8] focus:border-[#0051d5] focus:ring-4 focus:ring-[#0051d5]/15 focus:bg-[#f8f9ff]'
             }`}
           />
         );

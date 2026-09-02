@@ -31,20 +31,20 @@ export default function BookingSummaryCard({
   const finalTotal = baseTotal + platformFee + tax;
 
   return (
-    <div className="bg-[#ffffff] rounded-xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sticky top-24 space-y-6">
+    <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-6 shadow-sm sticky top-24 space-y-6">
       
       {/* Pro mini summary */}
-      <div className="flex items-center gap-3.5 pb-4 border-b border-[rgba(0,0,0,0.06)]">
+      <div className="flex items-center gap-3.5 pb-4 border-b border-[#e2e8f0]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={pro.avatar}
           alt={pro.name}
-          className="w-12 h-12 rounded-full object-cover ring-2 ring-[#eae4db] bg-[#eae4db]"
+          className="w-12 h-12 rounded-xl object-cover border border-[#e2e8f0]"
         />
         <div>
-          <h4 className="text-sm whl-display font-bold text-[#2a2a2a]">{pro.name}</h4>
-          <p className="text-xs text-[#606060]">{pro.title}</p>
-          <div className="flex items-center gap-1 text-[11px] text-[#2f68c5] font-semibold mt-0.5">
+          <h4 className="text-sm font-bold text-[#091426]">{pro.name}</h4>
+          <p className="text-xs text-[#64748b]">{pro.title}</p>
+          <div className="flex items-center gap-1 text-[11px] text-[#0d9488] font-medium mt-0.5">
             <ShieldCheck className="w-3.5 h-3.5" />
             Verified Background
           </div>
@@ -53,20 +53,20 @@ export default function BookingSummaryCard({
 
       {/* Selected Services breakdown */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-[11px] font-bold text-[#606060] uppercase tracking-wider">
+        <div className="flex items-center justify-between text-xs font-bold text-[#64748b] uppercase tracking-wider font-geist">
           <span>Selected Services ({selectedServices.length})</span>
         </div>
 
         {selectedServices.length === 0 ? (
-          <p className="text-xs text-[#9c9c9c] italic py-2">
+          <p className="text-xs text-[#94a3b8] italic py-2">
             No services selected yet. Please select at least one service.
           </p>
         ) : (
           <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
             {selectedServices.map((srv) => (
-              <div key={srv.id} className="flex items-center justify-between text-xs text-[#2a2a2a] py-1 border-b border-[rgba(0,0,0,0.04)] last:border-b-0">
-                <span className="truncate pr-2 font-semibold">{srv.name}</span>
-                <span className="font-bold shrink-0">₹{srv.price}</span>
+              <div key={srv.id} className="flex items-center justify-between text-xs text-[#0d1c2e] py-1 border-b border-[#f1f5f9] last:border-b-0">
+                <span className="truncate pr-2 font-medium">{srv.name}</span>
+                <span className="font-geist font-semibold shrink-0">₹{srv.price}</span>
               </div>
             ))}
           </div>
@@ -75,46 +75,46 @@ export default function BookingSummaryCard({
 
       {/* Booking Slot Details if chosen */}
       {(date || time) && (
-        <div className="p-3 rounded-lg bg-[#eae4db] border border-transparent space-y-1.5 text-xs text-[#606060]">
+        <div className="p-3 rounded-xl bg-[#f8f9ff] border border-[#e2e8f0] space-y-1.5 text-xs text-[#334155]">
           {date && (
             <div className="flex items-center gap-2">
-              <span className="text-[#606060]">Scheduled:</span>
-              <strong className="text-[#2a2a2a] font-bold">{date}</strong>
+              <span className="text-[#64748b]">Scheduled:</span>
+              <strong className="text-[#091426] font-geist">{date}</strong>
             </div>
           )}
           {time && (
             <div className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-[#2f68c5]" />
-              <span className="font-semibold">{time}</span>
+              <Clock className="w-3.5 h-3.5 text-[#0051d5]" />
+              <span className="font-geist">{time}</span>
             </div>
           )}
         </div>
       )}
 
       {/* Price breakdown */}
-      <div className="space-y-2 pt-2 border-t border-[rgba(0,0,0,0.06)] text-xs">
-        <div className="flex items-center justify-between text-[#606060]">
+      <div className="space-y-2 pt-2 border-t border-[#e2e8f0] text-xs">
+        <div className="flex items-center justify-between text-[#475569]">
           <span>Service Total</span>
-          <span>₹{baseTotal}</span>
+          <span className="font-geist">₹{baseTotal}</span>
         </div>
-        <div className="flex items-center justify-between text-[#606060]">
+        <div className="flex items-center justify-between text-[#475569]">
           <span>Convenience & Safety Fee</span>
-          <span>₹{platformFee}</span>
+          <span className="font-geist">₹{platformFee}</span>
         </div>
-        <div className="flex items-center justify-between text-[#606060]">
+        <div className="flex items-center justify-between text-[#475569]">
           <span>GST (18%)</span>
-          <span>₹{tax}</span>
+          <span className="font-geist">₹{tax}</span>
         </div>
         
-        <div className="pt-3 border-t border-[rgba(0,0,0,0.06)] flex items-center justify-between">
-          <span className="text-sm whl-display font-bold text-[#2a2a2a]">Total Payable</span>
+        <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between">
+          <span className="text-sm font-bold text-[#091426]">Total Payable</span>
           <PriceTag amount={finalTotal} size="lg" />
         </div>
       </div>
 
       {/* Guarantee badge */}
-      <div className="p-2.5 rounded-lg bg-[rgba(20,147,67,0.08)] border border-[rgba(20,147,67,0.2)] text-[11px] text-[#149343] font-semibold flex items-center gap-2">
-        <ShieldCheck className="w-4 h-4 shrink-0" />
+      <div className="p-2.5 rounded-lg bg-[#f0fdfa] border border-[#ccfbf1] text-[11px] text-[#0f766e] flex items-center gap-2">
+        <ShieldCheck className="w-4 h-4 text-[#0d9488] shrink-0" />
         <span>Pay after service option available. 100% money-back guarantee.</span>
       </div>
 
@@ -124,10 +124,10 @@ export default function BookingSummaryCard({
           {href ? (
             <Link
               href={href}
-              className={`w-full py-3 px-4 rounded-lg text-center text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              className={`w-full py-3 px-4 rounded-xl text-center text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
                 selectedServices.length > 0
-                  ? 'bg-[#f5a623] hover:brightness-95 active:scale-[0.98] text-black'
-                  : 'bg-[#eae4db] text-[#9c9c9c] cursor-not-allowed pointer-events-none'
+                  ? 'bg-[#0051d5] hover:bg-[#0042b0] text-white shadow-md hover:shadow-lg'
+                  : 'bg-[#cbd5e1] text-[#94a3b8] cursor-not-allowed pointer-events-none'
               }`}
             >
               <span>{ctaText}</span>
@@ -137,10 +137,10 @@ export default function BookingSummaryCard({
             <button
               onClick={onProceed}
               disabled={selectedServices.length === 0}
-              className={`w-full py-3 px-4 rounded-lg text-center text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              className={`w-full py-3 px-4 rounded-xl text-center text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
                 selectedServices.length > 0
-                  ? 'bg-[#f5a623] hover:brightness-95 active:scale-[0.98] text-black'
-                  : 'bg-[#eae4db] text-[#9c9c9c] cursor-not-allowed'
+                  ? 'bg-[#0051d5] hover:bg-[#0042b0] text-white shadow-md hover:shadow-lg'
+                  : 'bg-[#cbd5e1] text-[#94a3b8] cursor-not-allowed'
               }`}
             >
               <span>{ctaText}</span>

@@ -9,9 +9,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isWorkerRoute = pathname.startsWith('/worker');
   const isApiDocsRoute = pathname.startsWith('/api-docs');
-  const isLandingRoute = pathname === '/';
 
-  if (isWorkerRoute || isApiDocsRoute || isLandingRoute) {
+  if (isWorkerRoute || isApiDocsRoute) {
     return <>{children}</>;
   }
 
