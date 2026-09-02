@@ -1,153 +1,86 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  Home,
-  Search as SearchIcon,
-  Settings,
-  Calendar,
-  Activity,
-  List,
-  Square,
-  LayoutGrid,
-  Grid3x3,
-  User,
-  LogOut,
+import { 
+  Search, 
+  MapPin, 
+  ShieldCheck, 
+  Sparkles, 
+  ArrowRight, 
+  CheckCircle2, 
+  TrendingUp
 } from 'lucide-react';
-import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
-import './landing.css';
+import CategoryGrid from '@/components/marketplace/CategoryGrid';
+import ProCard from '@/components/marketplace/ProCard';
+import { MOCK_PROS } from '@/data/mockData';
+import DotDistortionBackground from '@/components/ui/DotDistortionBackground';
 
-const SERVICES = [
-  'Plumbing',
-  'Electrical',
-  'AC Repair',
-  'Room Cleaning',
-  'Vehicle Mechanic',
-  'Carpentry',
-  'Gardening',
-];
+export default function HomePage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [city, setCity] = useState('Chandigarh');
+  const parentcontainerRef = useRef<HTMLDivElement>(null);
 
-function ToolsPatternLoop() {
-  return (
-    <svg viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <rect width="900" height="500" fill="var(--gesso-canvas)" />
-      <g stroke="var(--gesso-fg)" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.14">
-        <g transform="translate(60,60) rotate(-15)"><path d="M0 40 L60 -20" strokeWidth="6" /><circle cx="60" cy="-20" r="10" fill="var(--gesso-canvas)" /></g>
-        <g transform="translate(220,140) rotate(20)"><rect x="-10" y="-40" width="20" height="80" rx="4" /><circle cx="0" cy="-46" r="9" /></g>
-        <g transform="translate(400,70)"><path d="M-20 -20 L20 20 M20 -20 L-20 20" strokeWidth="6" /></g>
-        <g transform="translate(560,150) rotate(10)"><rect x="-24" y="-14" width="48" height="28" rx="6" /><circle cx="-10" cy="0" r="4" /><circle cx="10" cy="0" r="4" /></g>
-        <g transform="translate(720,70)"><path d="M0 -30 v60 M-20 0 h40" /></g>
-        <g transform="translate(120,300) rotate(30)"><path d="M0 0 L0 60" strokeWidth="6" /><path d="M-16 0 L16 0" strokeWidth="6" /></g>
-        <g transform="translate(300,340)"><ellipse cx="0" cy="0" rx="26" ry="34" /><path d="M0 -34 v-10" /></g>
-        <g transform="translate(470,300) rotate(-10)"><rect x="-30" y="-10" width="60" height="20" rx="10" /><circle cx="-30" cy="0" r="10" /><circle cx="30" cy="0" r="10" /></g>
-        <g transform="translate(650,330) rotate(20)"><path d="M-24 24 L24 -24" /><path d="M-6 24 L24 -6" strokeWidth="8" /></g>
-        <g transform="translate(820,260) rotate(-15)"><rect x="-14" y="-30" width="28" height="60" rx="6" /></g>
-        <g transform="translate(60,420) rotate(10)"><circle cx="0" cy="0" r="22" /><path d="M0 -22 v-16" /></g>
-        <g transform="translate(780,430)"><path d="M-20 0 h40 M0 -20 v40" /></g>
-      </g>
-    </svg>
-  );
-}
-
-function ServiceIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="whl-service-icon">
-      <svg viewBox="0 0 64 64">{children}</svg>
-    </div>
-  );
-}
-
-export default function LandingPage() {
-  const router = useRouter();
-  const [service, setService] = useState(SERVICES[0]);
-  const [location, setLocation] = useState('');
-  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
-
-  const handleLogout = () => clearSession();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams({ q: service });
-    if (location.trim()) params.set('location', location.trim());
-    router.push(`/search?${params.toString()}`);
-  };
+  const popularSearches = [
+    'Fan Repair',
+    'AC Foam Wash',
+    'MCB Trip Diagnostic',
+    'Kitchen Faucet Leak',
+    'Smart Lock Fitting',
+    'Water Tank Clean',
+  ];
 
   return (
-    <div className="whl-page">
-      <div className="whl-wrap">
+    <div className="space-y-16 pb-20">
+      
+      {/* Hero Section */}
+      <section ref={parentcontainerRef} className="relative bg-gradient-to-b from-[#091426] via-[#0f1d38] to-[#091426] text-white pt-14 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Animated Dot Distortion Background */}
+        <DotDistortionBackground
+          dotSize={1.6}
+          dotSpacing={26}
+          dotColor="#38bdf8"
+          dotOpacity={0.4}
+          distortionIntensity={9}
+          interactionRadius={140}
+          interactionStrength={24}
+          containerRef={parentcontainerRef}
+        />
 
-        {/* ── Top Navigation ── */}
-        <nav className="whl-topnav">
-          <div className="whl-brand">
-            <div className="mark"><Home size={20} /></div>
-            <span className="whl-brand-name">WorkHub</span>
+        <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1e293b]/90 border border-[#334155] text-xs font-semibold text-[#38bdf8]">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Chandigarh’s #1 Verified Trades & Services Network</span>
           </div>
-          <div className="whl-nav-links">
-            <Link href="/" className="active">Home</Link>
-            <Link href="#services">Services</Link>
-            <Link href="#how">How it Works</Link>
-            <Link href="#join">For Workers</Link>
-          </div>
-          <div className="whl-nav-cta">
-            {session ? (
-              <>
-                <span className="whl-chip" style={{ maxWidth: 190, textTransform: 'none', letterSpacing: 0 }}>
-                  <User size={14} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {session.name || session.email}
-                  </span>
-                </span>
-                {session.role === 'WORKER' ? (
-                  <Link href="/worker/dashboard" className="whl-btn whl-btn-primary">Worker dashboard</Link>
-                ) : (
-                  <Link href="/search" className="whl-btn whl-btn-primary">Explore services</Link>
-                )}
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="whl-btn whl-btn-outline"
-                  title="Log out"
-                  aria-label="Log out"
-                >
-                  <LogOut size={16} />
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="whl-btn whl-btn-outline">Log in</Link>
-                <Link href="/signup" className="whl-btn whl-btn-primary">Sign up</Link>
-              </>
-            )}
-          </div>
-        </nav>
 
-        {/* ── Hero: window-chrome shell ── */}
-        <section className="whl-hero-window">
-          <div className="whl-hero-titlebar">
-            <div className="whl-traffic"><span className="r" /><span className="y" /><span className="g" /></div>
-            <span className="whl-titlebar-label">workhub — find-a-worker.app</span>
-            <div style={{ width: 60 }} />
-          </div>
-          <div className="whl-toolbar">
-            <Square />
-            <LayoutGrid />
-            <Grid3x3 />
-            <Square />
-          </div>
-          <div className="whl-hero-body">
-            <div className="whl-hero-bg-loop" aria-hidden="true">
-              <ToolsPatternLoop />
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
+            Book Trusted, Background-Checked <br className="hidden sm:block" />
+            <span className="bg-gradient-to-r from-[#38bdf8] via-[#60a5fa] to-[#93c5fd] bg-clip-text text-transparent">
+              Local Professionals
+            </span> In Minutes.
+          </h1>
+
+          <p className="max-w-2xl mx-auto text-sm sm:text-base text-[#cbd5e1] leading-relaxed">
+            Direct pricing, real-time arrival tracking, and a ₹10,000 damage protection guarantee on every home service booking.
+          </p>
+
+          {/* Main Search Container */}
+          <div className="max-w-3xl mx-auto bg-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-white/20 flex flex-col sm:flex-row items-center gap-2 text-[#0d1c2e] mt-8">
+            
+            {/* Location selector */}
+            <div className="flex items-center gap-2 px-3 py-2 sm:py-3 w-full sm:w-48 bg-[#f8f9ff] rounded-xl border border-[#e2e8f0]">
+              <MapPin className="w-4 h-4 text-[#0051d5] shrink-0" />
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="bg-transparent text-xs sm:text-sm font-semibold text-[#091426] focus:outline-none w-full cursor-pointer"
+              >
+                <option value="Chandigarh">Chandigarh</option>
+                <option value="Mohali">Mohali</option>
+                <option value="Panchkula">Panchkula</option>
+                <option value="Zirakpur">Zirakpur</option>
+              </select>
             </div>
-            <div className="whl-hero-copy">
-              <h1>Find the Right Worker for the Job</h1>
-              <p className="sub">Connect with skilled workers near you for everyday jobs, repairs, and services.</p>
-              <div className="whl-hero-ctas">
-                <Link href="/search" className="whl-btn whl-btn-primary">Find a Worker</Link>
-                {/* Become-a-worker entry point → signup with Worker preselected */}
-                <Link href="/signup?role=WORKER" className="whl-btn whl-btn-outline">Offer Your Skills</Link>
-              </div>
 
             {/* Keyword Input */}
             <div className="relative flex-1 w-full">

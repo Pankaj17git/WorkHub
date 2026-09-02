@@ -63,7 +63,7 @@ function SignupFormContent() {
 
   useEffect(() => {
     if (urlRole === "WORKER" || urlRole === "CUSTOMER") {
-      setAccountType(urlRole);
+      setRole(urlRole);
     }
   }, [urlRole]);
 
