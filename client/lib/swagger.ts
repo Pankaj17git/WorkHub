@@ -49,7 +49,7 @@ const swaggerDefinition = {
         tags: ["Auth"],
         summary: "Register a new user",
         description:
-          "Creates a new user account with email, password, name, phone, and role. Returns a JWT token on success.",
+          "Creates a new user account with email, password, name, phone, and role.",
         requestBody: {
           required: true,
           content: {
@@ -80,7 +80,6 @@ const swaggerDefinition = {
                     phone: "+919876543210",
                     role: "CUSTOMER",
                   },
-                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 },
               },
             },
@@ -187,7 +186,7 @@ const swaggerDefinition = {
         tags: ["OTP"],
         summary: "Send OTP to user",
         description:
-          "Generates a 6-digit OTP and sends it via email (phone SMS is planned). You can identify the user by `userId`, `email`, or `phone`. If a phone is provided and no user exists, a new user is auto-created for the phone-based auth flow.",
+          "Generates a 6-digit OTP and sends it via email. You can identify the user by `userId`, `email`, or `phone`. Requires an existing user account.",
         requestBody: {
           required: true,
           content: {
@@ -678,12 +677,8 @@ const swaggerDefinition = {
       SendOtpRequest: {
         type: "object",
         description:
-          "At least one of `userId`, `email`, or `phone` must be provided.",
+          "At least one of `email` or `phone` must be provided.",
         properties: {
-          userId: {
-            type: "string",
-            description: "User ID (BigInt as string)",
-          },
           email: {
             type: "string",
             format: "email",
@@ -699,14 +694,6 @@ const swaggerDefinition = {
             maximum: 8,
             default: 6,
             description: "OTP digit length",
-          },
-          role: {
-            type: "string",
-            description: "Role (used during auto-creation with phone)",
-          },
-          name: {
-            type: "string",
-            description: "Name (used during auto-creation with phone)",
           },
         },
       },
@@ -787,10 +774,6 @@ const swaggerDefinition = {
         properties: {
           message: { type: "string" },
           user: { $ref: "#/components/schemas/UserInfo" },
-          token: {
-            type: "string",
-            description: "JWT token (valid 7 days)",
-          },
         },
       },
 
@@ -816,12 +799,6 @@ const swaggerDefinition = {
             description: "OTP expiry timestamp",
           },
           emailSent: { type: "boolean" },
-          emailNotice: { type: "string", nullable: true },
-          otp: {
-            type: "string",
-            description:
-              "⚠️ Plain OTP returned for development/testing only. Remove in production!",
-          },
         },
       },
 

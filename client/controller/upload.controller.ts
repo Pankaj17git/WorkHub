@@ -16,7 +16,7 @@ export const uploadController = {
       return NextResponse.json({ error: "No file provided" }, { status: status.BAD_REQUEST });
     }
 
-    const record = await uploadService.uploadFile(file, BigInt(userId));
+    const record = await uploadService.uploadFileOnCloudinary(file, BigInt(userId));
     return NextResponse.json(
       {
         ...record,
