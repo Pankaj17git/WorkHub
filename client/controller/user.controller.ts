@@ -4,6 +4,8 @@ import { z } from "zod";
 import { status } from "@/constants/statusCodes";
 import { authMiddleware } from "@/middleware/auth.middleware";
 import { uploadService } from "@/services/upload.service";
+import { extractKeyFromUrl, generateKey } from "@/utils/file.upload";
+import { validateFile } from "@/middleware/validateUpload.middleware";
 
 
 export const userController = {
@@ -26,9 +28,17 @@ export const userController = {
         return NextResponse.json({ error: "No file provided" }, { status: status.BAD_REQUEST });
       }
 
-      // TODO: validate file.type / file.size here before uploading
+      validateFile(file);
 
-      const record = await uploadService.uploadFile(file, BigInt(userId));
+      const key = generateKey();
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+
+      const record = await uploadService.uploadToCloudinary(buffer, {
+        public_id: key,
+        folder: `users/profile`,
+      });
+
       if (!record) {
         return NextResponse.json({ error: "File upload failed" }, { status: status.INTERNAL_SERVER_ERROR });
       }
@@ -47,14 +57,18 @@ export const userController = {
         };
       } catch (dbError) {
         // roll back the orphaned upload
-        await uploadService.deleteFile(record.url).catch(() => {});
+        const key = extractKeyFromUrl(record.url);
+        await uploadService.deleteFileOnCloudinary(`users/profile/${key}`).catch(() => {
+          console.log("Failed to delete orphaned upload");
+        });
         throw dbError;
       }
 
       // only delete the old image once the new one is confirmed saved
       const prevImage = existingUser.profileImage;
       if (prevImage) {
-        uploadService.deleteFile(prevImage).catch((err) => {
+        const key = extractKeyFromUrl(prevImage);
+        uploadService.deleteFileOnCloudinary(`users/profile/${key}`).catch((err) => {
           console.error("Failed to delete previous profile image:", err);
         });
       }

@@ -121,7 +121,7 @@ export const authController = {
         );
       }
 
-      const { email, password, name, role, phone } = result.data;
+      const { email, password, name, role = "CUSTOMER", phone } = result.data;
       const emailLowerCase = email.toLowerCase();
 
       const existing = await prisma.user.findUnique({ where: { email: emailLowerCase } });
