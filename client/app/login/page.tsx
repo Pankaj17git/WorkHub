@@ -3,47 +3,46 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Lock,
-  Mail,
-  ArrowRight,
-  User,
-  Briefcase,
-  ShoppingBag,
+import { 
+  User, 
+  Mail, 
+  Lock, 
+  ArrowRight, 
+  Briefcase, 
+  ShoppingBag, 
   AlertCircle,
   ShieldAlert
 } from 'lucide-react';
-import { saveSession } from '@/lib/auth-client';
+import { saveSession, resolveLoginRedirect } from '@/lib/auth-client';
 
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const urlRole = searchParams.get('role');
   const redirectUrl = searchParams.get('redirect');
   const errorCode = searchParams.get('error');
 
-  // Role toggle: 'CUSTOMER' | 'WORKER'
-  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>(
-    urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'
-  );
-
+  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>('CUSTOMER');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (urlRole === 'WORKER' || urlRole === 'CUSTOMER') {
-      setRole(urlRole);
+    if (urlRole === 'WORKER') {
+      setRole('WORKER');
+    } else if (urlRole === 'CUSTOMER') {
+      setRole('CUSTOMER');
     }
   }, [urlRole]);
 
   let initialNotice: string | null = null;
   if (errorCode === 'unauthorized_worker_access') {
-    initialNotice = 'The Worker Portal is reserved for service professionals. Please log in with a Worker account.';
+    initialNotice = 'The pro portal is for service professionals. Log in with a worker account to continue.';
   } else if (errorCode === 'workers_cannot_book') {
-    initialNotice = 'Worker accounts cannot book customer services. Please log in with a Customer account.';
+    initialNotice = 'Worker accounts can’t book services. Log in with a customer account to make a booking.';
+  } else if (errorCode === 'session_expired') {
+    initialNotice = 'Your session expired. Please log in again.';
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -61,30 +60,15 @@ function LoginFormContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Login failed. Please try again.');
+        setError(data.error || 'Login failed. Please check your credentials.');
         setIsSubmitting(false);
         return;
       }
 
       const { token, user } = data;
-
-      // Persist session
       saveSession(token, user);
 
-      // Handle role-based redirection
-      if (redirectUrl && !redirectUrl.startsWith('/api')) {
-        // If redirect target matches role capabilities
-        if (user.role === 'WORKER' && redirectUrl.startsWith('/worker')) {
-          router.push(redirectUrl);
-          return;
-        }
-        if (user.role === 'CUSTOMER' && !redirectUrl.startsWith('/worker')) {
-          router.push(redirectUrl);
-          return;
-        }
-      }
-
-      router.push(user.role === 'WORKER' ? '/worker/dashboard' : '/');
+      router.push(resolveLoginRedirect(user.role, redirectUrl));
     } catch {
       setError('Something went wrong. Please try again.');
       setIsSubmitting(false);

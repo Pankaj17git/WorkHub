@@ -46,7 +46,7 @@ export const userController = {
       let user;
       try {
         let updatedUser = await prisma.user.update({
-          where: { id: userId.toString() },
+          where: { id: BigInt(userId) },
           data: { profileImage: record.url },
           select: { id: true, profileImage: true /* ...whatever's safe to return */ },
         });

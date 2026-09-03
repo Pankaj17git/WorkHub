@@ -9,11 +9,6 @@ import {
   Sparkles, 
   ArrowRight, 
   CheckCircle2, 
-  Star, 
-  Users, 
-  Award, 
-  Clock, 
-  Zap,
   TrendingUp
 } from 'lucide-react';
 import CategoryGrid from '@/components/marketplace/CategoryGrid';

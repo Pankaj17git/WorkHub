@@ -85,6 +85,32 @@ export function dashboardPathForRole(role?: string | null): string {
   return role === "WORKER" ? "/worker/dashboard" : "/";
 }
 
+/**
+ * Where a brand-new account lands right after signup + email verification.
+ * Workers go through skills onboarding first; customers go straight to the
+ * marketplace.
+ */
+export function signupRedirectPath(role?: string | null): string {
+  return role === "WORKER" ? "/worker/onboarding/skills" : "/";
+}
+
+/**
+ * Resolve where a login should land. The account's real role always wins, so a
+ * Worker never lands on a customer page and vice-versa. An optional `redirect`
+ * (e.g. from middleware) is only honoured when it matches the role's own area.
+ */
+export function resolveLoginRedirect(
+  role: string | null | undefined,
+  redirect?: string | null
+): string {
+  if (redirect && redirect.startsWith("/") && !redirect.startsWith("/api")) {
+    const wantsWorkerArea = redirect.startsWith("/worker");
+    if (role === "WORKER" && wantsWorkerArea) return redirect;
+    if (role !== "WORKER" && !wantsWorkerArea) return redirect;
+  }
+  return dashboardPathForRole(role);
+}
+
 export function isWorkerRole(user?: SessionUser | null): boolean {
   return user?.role === "WORKER";
 }

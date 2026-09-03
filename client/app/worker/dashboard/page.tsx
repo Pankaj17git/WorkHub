@@ -1,24 +1,26 @@
 'use client';
 
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { 
-  DollarSign, 
-  CheckCircle2, 
-  Star, 
-  TrendingUp, 
-  ArrowRight, 
-  Clock, 
-  MapPin, 
-  ShieldCheck, 
-  Inbox,
-  AlertCircle
+import {
+  DollarSign,
+  CheckCircle2,
+  Star,
+  TrendingUp,
+  ArrowRight,
+  Clock,
+  MapPin,
+  Inbox
 } from 'lucide-react';
 import MetricCard from '@/components/worker/MetricCard';
 import { MOCK_WORKER_METRICS, MOCK_INCOMING_REQUESTS } from '@/data/mockWorkerData';
 import PriceTag from '@/components/ui/PriceTag';
+import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
 export default function WorkerDashboardPage() {
+  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
+  const firstName = session?.name?.trim().split(/\s+/)[0];
+
   const pendingRequests = MOCK_INCOMING_REQUESTS.filter((j) => j.status === 'PENDING');
   const activeJob = MOCK_INCOMING_REQUESTS.find((j) => j.status === 'ACCEPTED') || MOCK_INCOMING_REQUESTS[0];
 
@@ -29,8 +31,11 @@ export default function WorkerDashboardPage() {
       <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#091426] tracking-tight">
-              Welcome Back, Rahul! 👋
+            <h1
+              className="text-2xl sm:text-3xl font-extrabold text-[#2a2a2a] tracking-tight"
+              style={{ fontFamily: 'var(--gesso-font-display)' }}
+            >
+              {firstName ? `Welcome back, ${firstName}!` : 'Welcome back!'} 👋
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-[#ecfdf5] text-[#0d9488] text-xs font-bold font-geist border border-[#a7f3d0]">
               Active Partner

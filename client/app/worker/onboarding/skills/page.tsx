@@ -1,67 +1,56 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { 
-  Zap, 
-  Wrench, 
-  Wind, 
-  Hammer, 
-  Check, 
-  ArrowRight, 
-  ShieldCheck, 
-  Sparkles,
-  Plus
-} from 'lucide-react';
-import PriceTag from '@/components/ui/PriceTag';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Zap, Wrench, Wind, Hammer, Check } from "lucide-react";
+import PriceTag from "@/components/ui/PriceTag";
 
 export default function WorkerSkillsOnboardingPage() {
   const router = useRouter();
 
-  const [selectedTrade, setSelectedTrade] = useState('Electrician');
+  const [selectedTrade, setSelectedTrade] = useState("Electrician");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([
-    'MCB & Distribution Boards',
-    'Smart Home Wiring',
-    'Inverter & UPS',
+    "MCB & Distribution Boards",
+    "Smart Home Wiring",
+    "Inverter & UPS",
   ]);
   const [baseHourlyRate, setBaseHourlyRate] = useState(350);
 
   const availableTrades = [
-    { name: 'Electrician', icon: Zap },
-    { name: 'Plumber', icon: Wrench },
-    { name: 'AC & Appliances', icon: Wind },
-    { name: 'Carpenter', icon: Hammer },
+    { name: "Electrician", icon: Zap },
+    { name: "Plumber", icon: Wrench },
+    { name: "AC & Appliances", icon: Wind },
+    { name: "Carpenter", icon: Hammer },
   ];
 
   const skillOptions: Record<string, string[]> = {
     Electrician: [
-      'MCB & Distribution Boards',
-      'Smart Home Wiring',
-      'Inverter & UPS',
-      'Fan & Chandelier Installation',
-      'Appliance Tripping Diagnostics',
-      'Industrial 3-Phase Wiring',
-      'Earthing & Surge Protection',
+      "MCB & Distribution Boards",
+      "Smart Home Wiring",
+      "Inverter & UPS",
+      "Fan & Chandelier Installation",
+      "Appliance Tripping Diagnostics",
+      "Industrial 3-Phase Wiring",
+      "Earthing & Surge Protection",
     ],
     Plumber: [
-      'Concealed Leak Detection',
-      'Sanitary & Faucet Fitting',
-      'Overhead Tank Cleaning',
-      'Motor & Pressure Pump',
-      'Drain Clog Removal',
+      "Concealed Leak Detection",
+      "Sanitary & Faucet Fitting",
+      "Overhead Tank Cleaning",
+      "Motor & Pressure Pump",
+      "Drain Clog Removal",
     ],
-    'AC & Appliances': [
-      'Foam Jet Deep AC Service',
-      'Inverter PCB Repair',
-      'Precision Gas Refill',
-      'Compressor Replacement',
+    "AC & Appliances": [
+      "Foam Jet Deep AC Service",
+      "Inverter PCB Repair",
+      "Precision Gas Refill",
+      "Compressor Replacement",
     ],
     Carpenter: [
-      'Modular Kitchen Adjustments',
-      'Hydraulic Hinges',
-      'Door Lock Installation',
-      'Furniture Restoration',
+      "Modular Kitchen Adjustments",
+      "Hydraulic Hinges",
+      "Door Lock Installation",
+      "Furniture Restoration",
     ],
   };
 
@@ -74,27 +63,29 @@ export default function WorkerSkillsOnboardingPage() {
   };
 
   const handleFinishOnboarding = () => {
-    router.push('/worker/dashboard');
+    router.push("/worker/dashboard");
   };
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4 space-y-8">
-      
       {/* Top Banner */}
       <div className="text-center space-y-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#0051d5] font-geist">
-          Step 2 of 3 • Skill Profile Setup
+        <span className="text-xs font-semibold text-[#875b13]">
+          One last step to go live
         </span>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#091426] tracking-tight">
-          Select Your Trade Competencies & Base Rates
+        <h1
+          className="text-2xl sm:text-3xl font-extrabold text-[#2a2a2a] tracking-tight"
+          style={{ fontFamily: "var(--gesso-font-display)" }}
+        >
+          Set up your trade and base rates
         </h1>
-        <p className="text-xs sm:text-sm text-[#64748b] max-w-md mx-auto">
-          We match you with nearby customer job requests matching your selected skills.
+        <p className="text-xs sm:text-sm text-[#606060] max-w-md mx-auto">
+          We match you with nearby customer job requests based on the skills you
+          pick here.
         </p>
       </div>
 
       <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-3xl p-6 sm:p-10 shadow-sm space-y-8">
-        
         {/* 1. Primary Trade */}
         <div className="space-y-3">
           <label className="text-sm font-bold text-[#091426] block">
@@ -112,8 +103,8 @@ export default function WorkerSkillsOnboardingPage() {
                   onClick={() => setSelectedTrade(t.name)}
                   className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center gap-2 ${
                     isSelected
-                      ? 'border-[#0051d5] bg-[#eff6ff] text-[#0051d5] font-bold shadow-xs'
-                      : 'border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8f9ff]'
+                      ? "border-[#0051d5] bg-[#eff6ff] text-[#0051d5] font-bold shadow-xs"
+                      : "border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8f9ff]"
                   }`}
                 >
                   <Icon className="w-6 h-6" />
@@ -143,11 +134,13 @@ export default function WorkerSkillsOnboardingPage() {
                   onClick={() => toggleSkill(skill)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
                     isSelected
-                      ? 'bg-[#091426] text-white border border-[#091426] shadow-xs'
-                      : 'bg-[#f8f9ff] text-[#334155] border border-[#e2e8f0] hover:border-[#cbd5e1]'
+                      ? "bg-[#091426] text-white border border-[#091426] shadow-xs"
+                      : "bg-[#f8f9ff] text-[#334155] border border-[#e2e8f0] hover:border-[#cbd5e1]"
                   }`}
                 >
-                  {isSelected && <Check className="w-3.5 h-3.5 text-[#38bdf8] stroke-[3]" />}
+                  {isSelected && (
+                    <Check className="w-3.5 h-3.5 text-[#38bdf8] stroke-[3]" />
+                  )}
                   <span>{skill}</span>
                 </button>
               );
@@ -186,13 +179,10 @@ export default function WorkerSkillsOnboardingPage() {
             onClick={handleFinishOnboarding}
             className="w-full py-3.5 px-4 bg-[#0051d5] hover:bg-[#0042b0] text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
           >
-            <span>Complete Setup & Enter Dashboard</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>Complete setup and go to dashboard</span>
           </button>
         </div>
-
       </div>
-
     </div>
   );
 }

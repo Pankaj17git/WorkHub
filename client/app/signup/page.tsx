@@ -3,45 +3,41 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  User,
-  Mail,
-  ShieldCheck,
-  ArrowRight,
-  Lock,
-  Briefcase,
-  ShoppingBag,
-  AlertCircle,
-  MailCheck
+import { 
+  User, 
+  Mail, 
+  Lock, 
+  ArrowRight, 
+  Briefcase, 
+  ShoppingBag, 
+  AlertCircle, 
+  MailCheck, 
+  ShieldCheck 
 } from 'lucide-react';
 import OtpPinInput from '@/components/ui/OtpPinInput';
-import { saveSession } from '@/lib/auth-client';
-
-type Step = 'ROLE' | 'FORM' | 'OTP';
+import { saveSession, signupRedirectPath } from '@/lib/auth-client';
 
 function SignupFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlRole = searchParams.get('role');
 
-  // Role toggle: 'CUSTOMER' | 'WORKER'
-  const [accountType, setAccountType] = useState<'CUSTOMER' | 'WORKER'>(
-    urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'
-  );
-  const [step, setStep] = useState<Step>('FORM');
+  const [accountType, setAccountType] = useState<'CUSTOMER' | 'WORKER'>('CUSTOMER');
+  const [step, setStep] = useState<'FORM' | 'OTP'>('FORM');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [otpValue, setOtpValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    if (urlRole === 'WORKER' || urlRole === 'CUSTOMER') {
-      setAccountType(urlRole);
+    if (urlRole === 'WORKER') {
+      setAccountType('WORKER');
+    } else if (urlRole === 'CUSTOMER') {
+      setAccountType('CUSTOMER');
     }
   }, [urlRole]);
 
@@ -51,7 +47,6 @@ function SignupFormContent() {
     setIsSubmitting(true);
 
     try {
-      // 1. Create the account
       const registerRes = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,38 +57,30 @@ function SignupFormContent() {
           role: accountType,
         }),
       });
-
       const registerData = await registerRes.json();
 
       if (!registerRes.ok) {
-        setError(registerData.error || 'Registration failed. Please try again.');
+        setError(registerData.error || 'Registration failed. Please check your information.');
         setIsSubmitting(false);
         return;
       }
 
-      // 2. Send email OTP for verification
+      // Automatically trigger OTP send to email
       const otpRes = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
       const otpData = await otpRes.json();
 
-      if (!otpRes.ok) {
-        setError(otpData.error || 'Failed to send verification code.');
-        setIsSubmitting(false);
-        return;
+      if (otpData.devOtp) {
+        setOtpNotice(`[DEV MODE] Your verification code is: ${otpData.devOtp}`);
       }
 
-      if (otpData.emailNotice) {
-        setOtpNotice(otpData.emailNotice);
-      }
-
-      setIsSubmitting(false);
       setStep('OTP');
+      setIsSubmitting(false);
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError('Something went wrong during registration.');
       setIsSubmitting(false);
     }
   };
@@ -104,40 +91,37 @@ function SignupFormContent() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/auth/otp/verify', {
+      const verifyRes = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp: otpValue }),
       });
+      const verifyData = await verifyRes.json();
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Invalid verification code.');
+      if (!verifyRes.ok) {
+        setError(verifyData.error || 'Invalid or expired OTP. Please try again.');
         setIsSubmitting(false);
         return;
       }
 
-      const { token, user } = data;
-
-      // Persist session in cookies and reactive store
+      const { token, user } = verifyData;
       saveSession(token, user);
 
-      router.push(user.role === 'WORKER' ? '/worker/dashboard' : '/');
+      router.push(signupRedirectPath(user.role));
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError('Verification failed. Please try again.');
       setIsSubmitting(false);
     }
   };
 
-  const accentText = accountType === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]';
   const accentBg = accountType === 'WORKER' ? 'bg-[#0d9488] hover:bg-[#0b7c73]' : 'bg-[#0051d5] hover:bg-[#0042b0]';
+  const accentText = accountType === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]';
   const accentIcon = accountType === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]';
 
   return (
     <div className="max-w-lg mx-auto py-10 px-4 sm:px-6 space-y-6">
 
-      {/* Header */}
+      {/* Top Header */}
       <div className="text-center space-y-2">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#091426] to-[#0051d5] flex items-center justify-center text-white font-bold text-xl mx-auto shadow-md">
           W<span className="text-[#38bdf8]">H</span>
@@ -146,14 +130,14 @@ function SignupFormContent() {
           Create Your WorkHub Account
         </h1>
         <p className="text-xs text-[#64748b] max-w-sm mx-auto">
-          Choose your account type below to get started with the right portal.
+          Join thousands of verified homeowners and service pros in Chandigarh, Mohali & Panchkula.
         </p>
       </div>
 
-      {/* Explicit Account Type Chooser Cards */}
+      {/* Step 1: Explicit Role Chooser Cards */}
       <div className="space-y-2">
         <label className="text-xs font-bold uppercase tracking-wider text-[#64748b] font-geist block text-center">
-          Step 1: Select Who You Are
+          Step 1: Choose Account Type
         </label>
 
         <div className="grid grid-cols-2 gap-3">
@@ -172,11 +156,9 @@ function SignupFormContent() {
               <div className="w-9 h-9 rounded-xl bg-[#0051d5] text-white flex items-center justify-center">
                 <ShoppingBag className="w-4 h-4" />
               </div>
-              {accountType === 'CUSTOMER' && (
-                <span className="w-5 h-5 rounded-full bg-[#0051d5] text-white flex items-center justify-center text-[10px] font-bold">
-                  ✓
-                </span>
-              )}
+              <span className="px-2 py-0.5 rounded-full bg-[#e6eeff] text-[#0051d5] text-[9px] font-bold font-geist border border-[#bfdbfe]">
+                Book Pros
+              </span>
             </div>
             <div>
               <strong className="text-sm font-bold text-[#091426] block">
