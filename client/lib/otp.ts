@@ -6,6 +6,7 @@ export interface CreateOtpParams {
   userId: bigint;
   expiresInMinutes?: number;
   length?: number;
+  tx?: any;
 }
 
 export interface VerifyOtpParams {
@@ -35,12 +36,13 @@ export async function hashOtp(otp: string): Promise<string> {
 /**
  * Create a new OTP record in the `otps` table
  */
-export async function createOtp({ userId, expiresInMinutes = 10, length = 6 }: CreateOtpParams) {
+export async function createOtp({ userId, expiresInMinutes = 10, length = 6, tx }: CreateOtpParams) {
   const plainOtp = generateOtpCode(length);
   const otpHash = await hashOtp(plainOtp);
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
 
-  const otpRecord = await prisma.otp.create({
+  const db = tx || prisma;
+  const otpRecord = await db.otp.create({
     data: {
       userId,
       otpHash,

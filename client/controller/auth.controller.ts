@@ -4,43 +4,48 @@ import { hashPassword, verifyPassword, signToken, loginSchema, registerSchema } 
 import { createOtp, verifyOtp } from "@/lib/otp";
 import { sendOtpEmail } from "@/lib/email";
 import { status } from "@/constants/statusCodes";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const sendOtpSchema = z
   .object({
-    userId: z.string().optional(),
-    email: z.email().optional(),
-    phone: z.string().optional(),
+    email: z.string().email("Invalid email address").optional(),
+    phone: z.string().min(5, "Invalid phone number").optional(),
     length: z.number().min(4).max(8).optional(),
-    role: z.string().optional(),
-    name: z.string().optional(),
   })
-  .refine((data) => data.userId || data.email || data.phone, {
-    message: "Either userId, email, or phone must be provided",
+  .refine((data) => data.email || data.phone, {
+    message: "Either email or phone must be provided",
   });
 
 const verifyOtpSchema = z
   .object({
-    userId: z.string().optional(),
-    email: z.email().optional(),
-    phone: z.string().optional(),
+    email: z.string().email("Invalid email address").optional(),
+    phone: z.string().min(5, "Invalid phone number").optional(),
     otp: z.string().length(6, "OTP must be exactly 6 digits"),
   })
-  .refine((data) => data.userId || data.email || data.phone, {
-    message: "Either userId, email, or phone must be provided",
+  .refine((data) => data.email || data.phone, {
+    message: "Either email or phone must be provided",
   });
 
 export const authController = {
   async login(request: Request) {
     try {
+      // Rate limiting (10 attempts per 15 minutes per IP)
+      const ip = getClientIp(request);
+      const rateCheck = await checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+      if (!rateCheck.allowed) {
+        return NextResponse.json(
+          { error: "Too many login attempts. Please try again later." },
+          { status: status.TOO_MANY_REQUESTS }
+        );
+      }
+
       const body = await request.json();
       const result = loginSchema.safeParse(body);
 
       if (!result.success) {
         return NextResponse.json(
-          {
-            error: result.error.issues[0].message,
-          },
+          { error: result.error.issues[0].message },
           { status: status.BAD_REQUEST }
         );
       }
@@ -49,17 +54,28 @@ export const authController = {
       const emailLowerCase = email.toLowerCase();
 
       const user = await prisma.user.findUnique({ where: { email: emailLowerCase } });
-      if (!user) {
+      
+      // Check if user exists and is NOT soft-deleted
+      if (!user || user.deletedAt !== null) {
         return NextResponse.json(
           { error: "Invalid credentials" },
           { status: status.UNAUTHORIZED }
         );
       }
 
+      // Verify password first to prevent user enumeration
       const valid = await verifyPassword(password, user.password);
       if (!valid) {
         return NextResponse.json(
           { error: "Invalid credentials" },
+          { status: status.UNAUTHORIZED }
+        );
+      }
+
+      // Check user.status (PENDING_VERIFICATION or non-ACTIVE)
+      if (user.status === "PENDING_VERIFICATION") {
+        return NextResponse.json(
+          { error: "Your account is pending verification. Please verify your email address." },
           { status: status.UNAUTHORIZED }
         );
       }
@@ -74,8 +90,10 @@ export const authController = {
         { status: status.OK }
       );
     } catch (error: any) {
+      // Log server-side, return generic message to client
+      console.error("Login Error:", error);
       return NextResponse.json(
-        { error: error.message || "Login failed" },
+        { error: "An unexpected error occurred during login." },
         { status: status.INTERNAL_SERVER_ERROR }
       );
     }
@@ -83,19 +101,27 @@ export const authController = {
 
   async register(request: Request) {
     try {
+      // Rate limiting (5 registrations per 15 minutes per IP)
+      const ip = getClientIp(request);
+      const rateCheck = await checkRateLimit(`register:${ip}`, 5, 15 * 60 * 1000);
+      if (!rateCheck.allowed) {
+        return NextResponse.json(
+          { error: "Too many registration attempts. Please try again later." },
+          { status: status.TOO_MANY_REQUESTS }
+        );
+      }
+
       const body = await request.json();
       const result = registerSchema.safeParse(body);
 
       if (!result.success) {
         return NextResponse.json(
-          {
-            error: result.error.issues[0].message,
-          },
+          { error: result.error.issues[0].message },
           { status: status.BAD_REQUEST }
         );
       }
 
-      const { email, password, name, role, phone } = result.data;
+      const { email, password, name, role = "CUSTOMER", phone } = result.data;
       const emailLowerCase = email.toLowerCase();
 
       const existing = await prisma.user.findUnique({ where: { email: emailLowerCase } });
@@ -106,46 +132,64 @@ export const authController = {
         );
       }
 
-      const hashed = await hashPassword(password);
-
-      // Ensure the role exists in the roles table and link it to the user
-      const roleRecord = await prisma.role.upsert({
-        where: { name: role },
-        update: {},
-        create: { name: role },
+      // Validate role exists using findFirst/findUnique instead of upserting user input
+      const normalizedRole = role.toUpperCase();
+      const roleRecord = await prisma.role.findFirst({
+        where: {
+          OR: [
+            { name: role },
+            { name: normalizedRole }
+          ]
+        },
       });
 
-      const user = await prisma.user.create({
-        data: { email: emailLowerCase, password: hashed, name, role, phone, roleId: roleRecord.id },
-      });
-
-      // Generate and store OTP in `otps` table
-      const { plainOtp } = await createOtp({ userId: user.id, length: 6 });
-
-      // Target Email dispatch
-      let emailResult: { sent: boolean; method: string; reason?: string } = { sent: false, method: "none" };
-      if (email && !email.endsWith("@phone.workhub")) {
-        emailResult = await sendOtpEmail(email, plainOtp);
+      if (!roleRecord) {
+        return NextResponse.json(
+          { error: `Role '${role}' is invalid or does not exist` },
+          { status: status.BAD_REQUEST }
+        );
       }
 
-      let token = "";
-      try {
-        token = signToken({ userId: user.id.toString(), email: emailLowerCase, role: user.role });
-      } catch {
-        // Secret fallback
+      const hashed = await hashPassword(password);
+
+      // Wrap user creation and OTP creation in a single database transaction
+      const { user, plainOtp } = await prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            email: emailLowerCase,
+            password: hashed,
+            name,
+            role: roleRecord.name,
+            phone: phone || null,
+            roleId: roleRecord.id,
+            status: "PENDING_VERIFICATION",
+          },
+        });
+
+        const otpRes = await createOtp({ userId: newUser.id, length: 6, tx });
+        return { user: newUser, plainOtp: otpRes.plainOtp };
+      });
+
+      // Dispatch email after transaction completes successfully
+      if (email && !email.endsWith("@phone.workhub")) {
+        const emailResult = await sendOtpEmail(email, plainOtp);
+        if (!emailResult.sent && emailResult.reason) {
+          console.warn("Registration OTP email dispatch warning:", emailResult.reason);
+        }
       }
 
       return NextResponse.json(
         {
           message: "User registered successfully",
           user: { id: user.id.toString(), email: emailLowerCase, name: user.name, phone: user.phone, role: user.role },
-          token,
         },
         { status: status.CREATED }
       );
     } catch (error: any) {
+      // Log server-side, return generic message to client
+      console.error("Register Error:", error);
       return NextResponse.json(
-        { error: error.message || "Registration failed" },
+        { error: "An unexpected error occurred during registration." },
         { status: status.INTERNAL_SERVER_ERROR }
       );
     }
@@ -153,6 +197,8 @@ export const authController = {
 
   async sendOtp(request: Request) {
     try {
+      const ip = getClientIp(request);
+
       const body = await request.json();
       const result = sendOtpSchema.safeParse(body);
 
@@ -163,38 +209,38 @@ export const authController = {
         );
       }
 
-      const { userId: inputUserId, email, phone, length = 6, role, name } = result.data;
+      const { email, phone, length = 6 } = result.data;
+      const targetIdentifier = email || phone || ip;
 
-      // Find user by email, phone, or userId
+      // Rate limiting (3 OTP send requests per 1 minute per IP/identifier)
+      const rateCheck = await checkRateLimit(`send-otp:${ip}:${targetIdentifier}`, 3, 60 * 1000);
+      if (!rateCheck.allowed) {
+        return NextResponse.json(
+          { error: "Too many OTP requests. Please wait a minute before requesting another code." },
+          { status: status.TOO_MANY_REQUESTS }
+        );
+      }
+
+      // Find user by email or phone (ensure not soft-deleted)
       let user;
       if (email) {
-        user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+        user = await prisma.user.findFirst({
+          where: { email: email.toLowerCase(), deletedAt: null },
+        });
       } else if (phone) {
         const cleanPhone = phone.trim();
-        user = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+        // 1Handle non-unique phone numbers gracefully
+        const matchingUsers = await prisma.user.findMany({
+          where: { phone: cleanPhone, deletedAt: null },
+        });
 
-        if (!user) {
-          // Auto-create user for phone-based signup/auth flow if user does not exist yet
-          const cleanDigits = cleanPhone.replace(/\D/g, "");
-          const tempEmail = `${cleanDigits.slice(-10)}@phone.workhub`;
-
-          const existingByTempEmail = await prisma.user.findUnique({ where: { email: tempEmail } });
-          if (existingByTempEmail) {
-            user = existingByTempEmail;
-          } else {
-            user = await prisma.user.create({
-              data: {
-                phone: cleanPhone,
-                email: tempEmail,
-                name: name || "Phone User",
-                password: "", // Password not required for OTP auth
-                role: role || "CUSTOMER",
-              },
-            });
-          }
+        if (matchingUsers.length > 1) {
+          return NextResponse.json(
+            { error: "Multiple accounts associated with this phone number. Please use your email address." },
+            { status: status.BAD_REQUEST }
+          );
         }
-      } else if (inputUserId) {
-        user = await prisma.user.findUnique({ where: { id: BigInt(inputUserId) } });
+        user = matchingUsers[0] || null;
       }
 
       if (!user) {
@@ -211,22 +257,27 @@ export const authController = {
       let emailResult: { sent: boolean; method: string; reason?: string } = { sent: false, method: "none" };
       if (user.email && !user.email.endsWith("@phone.workhub")) {
         emailResult = await sendOtpEmail(user.email, plainOtp);
+        if (!emailResult.sent && emailResult.reason) {
+          console.warn("sendOtp email dispatch warning:", emailResult.reason);
+        }
       }
 
+      // Plain OTP removed from JSON response payload
+      // Stripped emailNotice from response payload
       return NextResponse.json(
         {
-          message: "OTP generated successfully",
+          message: "OTP sent successfully",
           otpId: otpRecord.id.toString(),
           expiresAt: otpRecord.expiresAt,
           emailSent: emailResult.sent,
-          emailNotice: emailResult.reason || undefined,
-          otp: plainOtp,
         },
         { status: status.OK }
       );
     } catch (error: any) {
+      // Log server-side, return generic message to client
+      console.error("sendOtp Error:", error);
       return NextResponse.json(
-        { error: error.message || "Failed to send OTP" },
+        { error: "Failed to send OTP" },
         { status: status.INTERNAL_SERVER_ERROR }
       );
     }
@@ -234,6 +285,8 @@ export const authController = {
 
   async verifyOtp(request: Request) {
     try {
+      const ip = getClientIp(request);
+
       const body = await request.json();
       const result = verifyOtpSchema.safeParse(body);
 
@@ -244,16 +297,38 @@ export const authController = {
         );
       }
 
-      const { userId: inputUserId, email, phone, otp } = result.data;
+      const { email, phone, otp } = result.data;
+      const targetIdentifier = email || phone || ip;
+
+      // Rate limiting (5 verification attempts per 5 minutes)
+      const rateCheck = await checkRateLimit(`verify-otp:${ip}:${targetIdentifier}`, 5, 5 * 60 * 1000);
+      if (!rateCheck.allowed) {
+        return NextResponse.json(
+          { error: "Too many failed OTP verification attempts. Please try again in 5 minutes." },
+          { status: status.TOO_MANY_REQUESTS }
+        );
+      }
 
       let targetUser: any = null;
 
       if (email) {
-        targetUser = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+        targetUser = await prisma.user.findFirst({
+          where: { email: email.toLowerCase(), deletedAt: null },
+        });
       } else if (phone) {
-        targetUser = await prisma.user.findFirst({ where: { phone: phone.trim() } });
-      } else if (inputUserId) {
-        targetUser = await prisma.user.findUnique({ where: { id: BigInt(inputUserId) } });
+        const cleanPhone = phone.trim();
+        // Handle non-unique phone lookup
+        const matchingUsers = await prisma.user.findMany({
+          where: { phone: cleanPhone, deletedAt: null },
+        });
+
+        if (matchingUsers.length > 1) {
+          return NextResponse.json(
+            { error: "Multiple accounts associated with this phone number. Please verify using email." },
+            { status: status.BAD_REQUEST }
+          );
+        }
+        targetUser = matchingUsers[0] || null;
       }
 
       if (!targetUser) {
@@ -272,15 +347,15 @@ export const authController = {
         );
       }
 
-      // Mark email as verified on successful OTP verification
-      if (!targetUser.emailVerifiedAt) {
+      // Mark email as verified on successful OTP verification and activate user status
+      if (!targetUser.emailVerifiedAt || targetUser.status === "PENDING_VERIFICATION") {
         targetUser = await prisma.user.update({
           where: { id: targetUser.id },
-          data: { emailVerifiedAt: new Date() },
+          data: { emailVerifiedAt: targetUser.emailVerifiedAt || new Date(), status: "ACTIVE" },
         });
       }
 
-      // Generate JWT token for session
+      // Token signing failure is NOT swallowed
       let token = "";
       try {
         token = signToken({
@@ -288,8 +363,12 @@ export const authController = {
           email: targetUser.email,
           role: targetUser.role,
         });
-      } catch {
-        // JWT secret missing in env fallback
+      } catch (tokenErr: any) {
+        console.error("JWT signing failed during verifyOtp:", tokenErr);
+        return NextResponse.json(
+          { error: "Failed to generate authentication token" },
+          { status: status.INTERNAL_SERVER_ERROR }
+        );
       }
 
       return NextResponse.json(
@@ -308,13 +387,15 @@ export const authController = {
         { status: status.OK }
       );
     } catch (error: any) {
+      // Log server-side, return generic message to client
+      console.error("verifyOtp Error:", error);
       return NextResponse.json(
-        { error: error.message || "Failed to verify OTP" },
+        { error: "Failed to verify OTP" },
         { status: status.INTERNAL_SERVER_ERROR }
       );
     }
   },
-
+  
   async firebaseSession(request: Request) {
     try {
       const { phone, name, role } = await request.json();
@@ -330,7 +411,7 @@ export const authController = {
 
       // Find or create user in Prisma database
       let user = await prisma.user.findFirst({
-        where: { phone: cleanPhone },
+        where: { phone: cleanPhone, deletedAt: null },
       });
 
       if (!user) {
@@ -351,12 +432,13 @@ export const authController = {
               name: name || "Phone User",
               password: "",
               role: role || "CUSTOMER",
+              status: "ACTIVE",
             },
           });
         }
       }
 
-      // Generate internal JWT token
+      // 8. Handle token signing failure properly
       let token = "";
       try {
         token = signToken({
@@ -364,8 +446,12 @@ export const authController = {
           email: user.email,
           role: user.role,
         });
-      } catch {
-        // Secret fallback
+      } catch (tokenErr: any) {
+        console.error("JWT signing failed during firebaseSession:", tokenErr);
+        return NextResponse.json(
+          { error: "Failed to generate authentication token" },
+          { status: status.INTERNAL_SERVER_ERROR }
+        );
       }
 
       return NextResponse.json(
@@ -385,7 +471,7 @@ export const authController = {
     } catch (error: any) {
       console.error("Firebase Auth Session Error:", error);
       return NextResponse.json(
-        { error: error.message || "Failed to create session" },
+        { error: "Failed to create session" },
         { status: status.INTERNAL_SERVER_ERROR }
       );
     }

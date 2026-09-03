@@ -137,7 +137,7 @@ All documented at `/api-docs` (Swagger):
 
 | Endpoint | Body | Response |
 |---|---|---|
-| `POST /api/auth/register` | `{ name, email, password, role }` (phone optional) | `{ user, token }` |
+| `POST /api/auth/register` | `{ name, email, password, role }` (phone optional) | `{ message, user }` |
 | `POST /api/auth/login` | `{ email, password }` | `{ user, token }` |
 | `POST /api/auth/otp/send` | `{ email }` | `{ otpId, expiresAt, emailSent, otp? }` (`otp` only in dev) |
 | `POST /api/auth/otp/verify` | `{ email, otp }` (6 digits) | `{ verified, token, user }` |
