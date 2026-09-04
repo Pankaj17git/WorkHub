@@ -133,13 +133,9 @@ export const authController = {
       }
 
       // Validate role exists using findFirst/findUnique instead of upserting user input
-      const normalizedRole = role.toUpperCase();
       const roleRecord = await prisma.role.findFirst({
         where: {
-          OR: [
-            { name: role },
-            { name: normalizedRole }
-          ]
+          type: role,
         },
       });
 
@@ -159,12 +155,27 @@ export const authController = {
             email: emailLowerCase,
             password: hashed,
             name,
-            role: roleRecord.name,
             phone: phone || null,
             roleId: roleRecord.id,
             status: "PENDING_VERIFICATION",
           },
         });
+
+        // Create the role-specific profile row now that we have newUser.id
+        if (role === "CUSTOMER") {
+          await tx.customer.create({
+            data: {
+              userId: newUser.id,
+            },
+          });
+        } else if (role === "WORKER") {
+          await tx.worker.create({
+            data: {
+              userId: newUser.id,
+            },
+          });
+        }
+        // (CONTRACTOR presumably needs its own branch/table too, once that model exists)
 
         const otpRes = await createOtp({ userId: newUser.id, length: 6, tx });
         return { user: newUser, plainOtp: otpRes.plainOtp };
@@ -181,7 +192,7 @@ export const authController = {
       return NextResponse.json(
         {
           message: "User registered successfully",
-          user: { id: user.id.toString(), email: emailLowerCase, name: user.name, phone: user.phone, role: user.role },
+          user: { id: user.id.toString(), email: emailLowerCase, name: user.name, phone: user.phone, role: role },
         },
         { status: status.CREATED }
       );
