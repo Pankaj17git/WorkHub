@@ -1,0 +1,35 @@
+enum Status {
+  OPEN
+  CLOSED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Job {
+  id          BigInt   @id @default(autoincrement())
+  title       String   @db.VarChar(255)
+  description String   @db.Text
+
+  createdById BigInt   @map("created_by")
+  createdBy   Customer?     @relation("PostedJobs", fields: [createdById], references: [id])
+
+  addressId   BigInt?  @unique @map("address_id")
+  address     Address? @relation(fields: [addressId], references: [id])
+
+  minAmount   Decimal? @map("min_amount") @db.Decimal(10, 2)
+  maxAmount   Decimal? @map("max_amount") @db.Decimal(10, 2)
+  currency    String?  @db.VarChar(10)
+
+  skills       Json
+  status       String   @default("OPEN") @db.VarChar(20)
+
+  assignedToId BigInt?  @map("assigned_to")
+  assignedTo   Worker?  @relation("AssignedWorker", fields: [assignedToId], references: [id])
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([status])
+  @@map("jobs")
+}

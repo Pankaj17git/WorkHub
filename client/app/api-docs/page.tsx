@@ -20,7 +20,7 @@ export default function ApiDocsPage() {
   return (
     <div style={{ background: "#fafafa", minHeight: "100vh" }}>
       {spec ? (
-        <SwaggerUI spec={spec} />
+        <SwaggerUI spec={spec} persistAuthorization={true} />
       ) : (
         <div
           style={{

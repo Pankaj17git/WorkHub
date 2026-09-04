@@ -1,5 +1,26 @@
 import swaggerJsdoc from "swagger-jsdoc";
 
+// ─── REUSABLE SWAGGER ERROR RESPONSE HELPER ──────────────────────
+export const createSwaggerError = (description: string, exampleError: string) => ({
+  description,
+  content: {
+    "application/json": {
+      schema: { $ref: "#/components/schemas/ErrorResponse" },
+      example: { error: exampleError },
+    },
+  },
+});
+
+export const swaggerErrors = {
+  badRequest: (msg = "Invalid input or parameters") => createSwaggerError("Validation error or bad request", msg),
+  unauthorized: (msg = "Unauthorized access") => createSwaggerError("Unauthorized (missing or invalid token)", msg),
+  forbidden: (msg = "Forbidden access") => createSwaggerError("Forbidden action", msg),
+  notFound: (msg = "Resource not found") => createSwaggerError("Resource not found", msg),
+  conflict: (msg = "Resource already exists") => createSwaggerError("Resource conflict", msg),
+  tooManyRequests: (msg = "Too many requests. Please try again later.") => createSwaggerError("Rate limit exceeded", msg),
+  internalError: (msg = "An unexpected server error occurred") => createSwaggerError("Internal server error", msg),
+};
+
 const swaggerDefinition = {
   openapi: "3.0.0",
   info: {
@@ -40,6 +61,14 @@ const swaggerDefinition = {
     {
       name: "Uploads",
       description: "File upload and storage management",
+    },
+    {
+      name: "Address",
+      description: "User address management endpoints",
+    },
+    {
+      name: "Jobs",
+      description: "Job posting and management endpoints",
     },
   ],
   paths: {
@@ -84,37 +113,9 @@ const swaggerDefinition = {
               },
             },
           },
-          "400": {
-            description: "Validation error (invalid email, short password, etc.)",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-                example: {
-                  error: "Password must be at least 8 characters",
-                },
-              },
-            },
-          },
-          "409": {
-            description: "User with this email already exists",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-                example: {
-                  error: "User with this email already exists",
-                },
-              },
-            },
-          },
-          "500": {
-            description: "Internal server error",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-                example: { error: "Registration failed" },
-              },
-            },
-          },
+          "400": swaggerErrors.badRequest("Password must be at least 8 characters"),
+          "409": swaggerErrors.conflict("User with this email already exists"),
+          "500": swaggerErrors.internalError("Registration failed"),
         },
       },
     },
@@ -500,6 +501,189 @@ const swaggerDefinition = {
       },
     },
 
+    // ─── ADDRESS ────────────────────────────────────────────────
+    "/api/user/address": {
+      post: {
+        tags: ["Address"],
+        summary: "Add or update user address",
+        description:
+          "Creates a new address record and connects it to the authenticated user's Customer or Worker profile. Requires JWT authentication.",
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AddAddressRequest" },
+              example: {
+                address: "123 Tech Park, MG Road",
+                city: "Bengaluru",
+                state: "Karnataka",
+                country: "India",
+                latitude: 12.971598,
+                longitude: 77.594566,
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Address added successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AddAddressResponse" },
+                example: {
+                  message: "Address added successfully",
+                  address: {
+                    id: "1",
+                    address: "123 Tech Park, MG Road",
+                    city: "Bengaluru",
+                    state: "Karnataka",
+                    country: "India",
+                    latitude: 12.971598,
+                    longitude: 77.594566,
+                    createdAt: "2026-09-04T11:00:00.000Z",
+                    updatedAt: "2026-09-04T11:00:00.000Z",
+                  },
+                },
+              },
+            },
+          },
+          "400": swaggerErrors.badRequest("Address line is required"),
+          "401": swaggerErrors.unauthorized(),
+          "500": swaggerErrors.internalError("Failed to add address"),
+        },
+      },
+      get: {
+        tags: ["Address"],
+        summary: "Get authenticated user address",
+        description:
+          "Fetches the currently linked address for the authenticated user.",
+        security: [{ BearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "Address fetched successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/GetAddressResponse" },
+                example: {
+                  address: {
+                    id: "1",
+                    address: "123 Tech Park, MG Road",
+                    city: "Bengaluru",
+                    state: "Karnataka",
+                    country: "India",
+                    latitude: 12.971598,
+                    longitude: 77.594566,
+                    createdAt: "2026-09-04T11:00:00.000Z",
+                    updatedAt: "2026-09-04T11:00:00.000Z",
+                  },
+                },
+              },
+            },
+          },
+          "401": swaggerErrors.unauthorized(),
+          "500": swaggerErrors.internalError("Failed to fetch address"),
+        },
+      },
+    },
+
+    "/api/address": {
+      post: {
+        tags: ["Address"],
+        summary: "Add or update user address (Alias)",
+        description:
+          "Alias endpoint to add or update address for the authenticated user.",
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AddAddressRequest" },
+              example: {
+                address: "123 Tech Park, MG Road",
+                city: "Bengaluru",
+                state: "Karnataka",
+                country: "India",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Address added successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AddAddressResponse" },
+              },
+            },
+          },
+          "400": swaggerErrors.badRequest(),
+          "401": swaggerErrors.unauthorized(),
+          "500": swaggerErrors.internalError(),
+        },
+      },
+      get: {
+        tags: ["Address"],
+        summary: "Get authenticated user address (Alias)",
+        description: "Alias endpoint to fetch authenticated user's address.",
+        security: [{ BearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "Address fetched successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/GetAddressResponse" },
+              },
+            },
+          },
+          "401": swaggerErrors.unauthorized(),
+          "500": swaggerErrors.internalError(),
+        },
+      },
+    },
+
+    // ─── JOBS ───────────────────────────────────────────────────
+    "/api/jobs": {
+      post: {
+        tags: ["Jobs"],
+        summary: "Create a new job",
+        description:
+          "Creates a new job posting for the authenticated customer user. Requires JWT authentication.",
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateJobRequest" },
+              example: {
+                title: "Need Plumber for Bathroom Repair",
+                description: "Fix leaking pipe in master bathroom",
+                minAmount: 500,
+                maxAmount: 1200,
+                currency: "INR",
+                skills: ["Plumbing", "Pipe Fitting"],
+                status: "OPEN",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Job created successfully",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CreateJobResponse" },
+              },
+            },
+          },
+          "400": swaggerErrors.badRequest("Job title is required"),
+          "401": swaggerErrors.unauthorized("Unauthorized / Customer profile not found"),
+          "403": swaggerErrors.forbidden("Worker account detected. Only customers can post jobs."),
+          "500": swaggerErrors.internalError("Failed to create job"),
+        },
+      },
+    },
+
     // ─── UPLOADS ────────────────────────────────────────────────
     "/api/uploads": {
       post: {
@@ -864,6 +1048,105 @@ const swaggerDefinition = {
         type: "object",
         properties: {
           success: { type: "boolean" },
+        },
+      },
+
+      AddAddressRequest: {
+        type: "object",
+        required: ["address"],
+        properties: {
+          address: {
+            type: "string",
+            description: "Street address line (required)",
+          },
+          city: {
+            type: "string",
+            description: "City name",
+          },
+          state: {
+            type: "string",
+            description: "State or province",
+          },
+          country: {
+            type: "string",
+            description: "Country name",
+          },
+          latitude: {
+            type: "number",
+            format: "float",
+            description: "Latitude coordinate",
+          },
+          longitude: {
+            type: "number",
+            format: "float",
+            description: "Longitude coordinate",
+          },
+        },
+      },
+
+      AddressInfo: {
+        type: "object",
+        nullable: true,
+        properties: {
+          id: { type: "string", description: "Address ID (BigInt as string)" },
+          address: { type: "string", nullable: true },
+          city: { type: "string", nullable: true },
+          state: { type: "string", nullable: true },
+          country: { type: "string", nullable: true },
+          latitude: { type: "number", nullable: true },
+          longitude: { type: "number", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+
+      AddAddressResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          address: { $ref: "#/components/schemas/AddressInfo" },
+        },
+      },
+
+      GetAddressResponse: {
+        type: "object",
+        properties: {
+          address: { $ref: "#/components/schemas/AddressInfo" },
+        },
+      },
+
+      CreateJobRequest: {
+        type: "object",
+        required: ["title", "description", "minAmount", "maxAmount", "currency", "skills"],
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          minAmount: { type: "number" },
+          maxAmount: { type: "number" },
+          currency: { type: "string" },
+          skills: { type: "array", items: { type: "string" } },
+          status: { type: "string", default: "OPEN" },
+        },
+      },
+
+      CreateJobResponse: {
+        type: "object",
+        properties: {
+          job: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              title: { type: "string" },
+              description: { type: "string" },
+              minAmount: { type: "number" },
+              maxAmount: { type: "number" },
+              currency: { type: "string" },
+              skills: { type: "array", items: { type: "string" } },
+              status: { type: "string" },
+              createdById: { type: "string" },
+              createdAt: { type: "string", format: "date-time" },
+            },
+          },
         },
       },
 

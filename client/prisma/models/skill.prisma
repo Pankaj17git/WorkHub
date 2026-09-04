@@ -1,0 +1,12 @@
+model Skill {
+  id        BigInt   @id @default(autoincrement())
+  workerId  BigInt   @map("worker_id")
+  worker    Worker   @relation(fields: [workerId], references: [id])
+  name      String   @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@unique([workerId, name])
+  @@index([name])
+  @@map("skills")
+}
