@@ -51,10 +51,6 @@ const swaggerDefinition = {
       description: "OTP generation & verification (email/phone)",
     },
     {
-      name: "Firebase",
-      description: "Firebase Phone Auth session sync",
-    },
-    {
       name: "User",
       description: "User profile management",
     },
@@ -346,72 +342,6 @@ const swaggerDefinition = {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ErrorResponse" },
                 example: { error: "Failed to verify OTP" },
-              },
-            },
-          },
-        },
-      },
-    },
-
-    // ─── FIREBASE SESSION ───────────────────────────────────────
-    "/api/auth/firebase/session": {
-      post: {
-        tags: ["Firebase"],
-        summary: "Sync Firebase Phone Auth session",
-        description:
-          "After Firebase phone authentication completes on the client, call this endpoint to sync the authenticated phone number with the WorkHub database. If no user exists for the phone, one is created automatically. Returns a WorkHub JWT token.",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/FirebaseSessionRequest",
-              },
-              example: {
-                phone: "+919876543210",
-                name: "Pankaj",
-                role: "CUSTOMER",
-              },
-            },
-          },
-        },
-        responses: {
-          "200": {
-            description: "Session created, JWT token issued",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/FirebaseSessionResponse",
-                },
-                example: {
-                  message: "Firebase Phone Authentication successful",
-                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-                  user: {
-                    id: "1",
-                    name: "Pankaj",
-                    email: "9876543210@phone.workhub",
-                    phone: "+919876543210",
-                    role: "CUSTOMER",
-                  },
-                },
-              },
-            },
-          },
-          "400": {
-            description: "Phone number is required",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-                example: { error: "Phone number is required" },
-              },
-            },
-          },
-          "500": {
-            description: "Internal server error",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ErrorResponse" },
-                example: { error: "Failed to create session" },
               },
             },
           },
@@ -909,26 +839,6 @@ const swaggerDefinition = {
         },
       },
 
-      FirebaseSessionRequest: {
-        type: "object",
-        required: ["phone"],
-        properties: {
-          phone: {
-            type: "string",
-            description: "Phone number verified by Firebase",
-          },
-          name: {
-            type: "string",
-            description: "Optional display name",
-          },
-          role: {
-            type: "string",
-            enum: ["USER", "CUSTOMER", "WORKER", "ADMIN"],
-            description: "Optional user role (default: CUSTOMER)",
-          },
-        },
-      },
-
       DeleteFileRequest: {
         type: "object",
         required: ["key"],
@@ -991,18 +901,6 @@ const swaggerDefinition = {
         properties: {
           message: { type: "string" },
           verified: { type: "boolean" },
-          token: {
-            type: "string",
-            description: "JWT token (valid 7 days)",
-          },
-          user: { $ref: "#/components/schemas/UserInfo" },
-        },
-      },
-
-      FirebaseSessionResponse: {
-        type: "object",
-        properties: {
-          message: { type: "string" },
           token: {
             type: "string",
             description: "JWT token (valid 7 days)",

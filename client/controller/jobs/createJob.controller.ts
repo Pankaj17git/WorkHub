@@ -79,7 +79,7 @@ export const JobController = {
       };
 
       return apiResponse.success({ job: formattedJob }, Status.OK);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating job:", error);
       return apiResponse.internalError("Failed to create job");
     }

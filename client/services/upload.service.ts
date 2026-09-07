@@ -4,7 +4,6 @@ import { validateFile } from "@/middleware/validateUpload.middleware";
 import { prisma } from "@/lib/prisma";
 import { cloudinaryClient } from "@/lib/cloudinary";
 import { UploadApiOptions, UploadApiResponse } from "cloudinary";
-import { extractKeyFromUrl } from "@/utils/file.upload";
 
 const BUCKET = process.env.SUPABASE_BUCKET || "uploads";
 

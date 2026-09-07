@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient, UserRole } from "../generated/prisma/client";
 
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST!,
@@ -13,15 +13,19 @@ const adapter = new PrismaMariaDb({
 
 const prisma = new PrismaClient({ adapter });
 
-const ROLES = ["CUSTOMER", "WORKER"];
+const ROLES: UserRole[] = [UserRole.CUSTOMER, UserRole.WORKER];
 
 async function main() {
-  for (const name of ROLES) {
-    await prisma.role.upsert({
-      where: { name },
-      update: {},
-      create: { name },
+  for (const roleType of ROLES) {
+    const existing = await prisma.role.findFirst({
+      where: { type: roleType },
     });
+
+    if (!existing) {
+      await prisma.role.create({
+        data: { type: roleType },
+      });
+    }
   }
 }
 

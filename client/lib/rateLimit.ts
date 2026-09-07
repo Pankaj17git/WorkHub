@@ -50,11 +50,18 @@ export async function checkRateLimit(
       remaining: res.remainingPoints,
       resetTime: Date.now() + res.msBeforeNext,
     };
-  } catch (rej: any) {
+  } catch (rej: unknown) {
+    const msBeforeNext =
+      typeof rej === "object" &&
+      rej !== null &&
+      "msBeforeNext" in rej &&
+      typeof (rej as { msBeforeNext: unknown }).msBeforeNext === "number"
+        ? (rej as { msBeforeNext: number }).msBeforeNext
+        : windowMs;
     return {
       allowed: false,
       remaining: 0,
-      resetTime: Date.now() + (rej?.msBeforeNext || windowMs),
+      resetTime: Date.now() + msBeforeNext,
     };
   }
 }

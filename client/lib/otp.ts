@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -6,7 +7,7 @@ export interface CreateOtpParams {
   userId: bigint;
   expiresInMinutes?: number;
   length?: number;
-  tx?: any;
+  tx?: Prisma.TransactionClient;
 }
 
 export interface VerifyOtpParams {

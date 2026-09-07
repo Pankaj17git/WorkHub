@@ -6,6 +6,7 @@ import { sendOtpEmail } from "@/lib/email";
 import { status } from "@/constants/statusCodes";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 
 const sendOtpSchema = z
   .object({
@@ -53,7 +54,10 @@ export const authController = {
       const { email, password } = result.data;
       const emailLowerCase = email.toLowerCase();
 
-      const user = await prisma.user.findUnique({ where: { email: emailLowerCase } });
+      const user = await prisma.user.findUnique({ 
+        where: { email: emailLowerCase },
+        include: { roleRef: true },
+      });
       
       // Check if user exists and is NOT soft-deleted
       if (!user || user.deletedAt !== null) {
@@ -80,16 +84,20 @@ export const authController = {
         );
       }
 
-      const token = signToken({ userId: user.id.toString(), email: user.email, role: user.role });
+      if (!user.roleRef) {
+        throw new Error("User role not found");
+      }
+
+      const token = signToken({ userId: user.id.toString(), email: user.email, role: user.roleRef.type });
 
       return NextResponse.json(
         {
-          user: { id: user.id.toString(), email: user.email, name: user.name, role: user.role },
+          user: { id: user.id.toString(), email: user.email, name: user.name, role: user.roleRef?.type },
           token,
         },
         { status: status.OK }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log server-side, return generic message to client
       console.error("Login Error:", error);
       return NextResponse.json(
@@ -196,7 +204,7 @@ export const authController = {
         },
         { status: status.CREATED }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log server-side, return generic message to client
       console.error("Register Error:", error);
       return NextResponse.json(
@@ -284,7 +292,7 @@ export const authController = {
         },
         { status: status.OK }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log server-side, return generic message to client
       console.error("sendOtp Error:", error);
       return NextResponse.json(
@@ -320,17 +328,23 @@ export const authController = {
         );
       }
 
-      let targetUser: any = null;
+      type UserWithRole = Prisma.UserGetPayload<{
+        include: { roleRef: true };
+      }>;
+
+      let targetUser: UserWithRole | null = null;
 
       if (email) {
         targetUser = await prisma.user.findFirst({
           where: { email: email.toLowerCase(), deletedAt: null },
+          include: { roleRef: true}
         });
       } else if (phone) {
         const cleanPhone = phone.trim();
         // Handle non-unique phone lookup
         const matchingUsers = await prisma.user.findMany({
           where: { phone: cleanPhone, deletedAt: null },
+          include: { roleRef: true}
         });
 
         if (matchingUsers.length > 1) {
@@ -363,6 +377,7 @@ export const authController = {
         targetUser = await prisma.user.update({
           where: { id: targetUser.id },
           data: { emailVerifiedAt: targetUser.emailVerifiedAt || new Date(), status: "ACTIVE" },
+          include: { roleRef: true}
         });
       }
 
@@ -372,9 +387,9 @@ export const authController = {
         token = signToken({
           userId: targetUser.id.toString(),
           email: targetUser.email,
-          role: targetUser.role,
+          role: targetUser.roleRef!.type,
         });
-      } catch (tokenErr: any) {
+      } catch (tokenErr: unknown) {
         console.error("JWT signing failed during verifyOtp:", tokenErr);
         return NextResponse.json(
           { error: "Failed to generate authentication token" },
@@ -392,97 +407,16 @@ export const authController = {
             email: targetUser.email,
             name: targetUser.name,
             phone: targetUser.phone,
-            role: targetUser.role,
+            role: targetUser.roleRef!.type,
           },
         },
         { status: status.OK }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log server-side, return generic message to client
       console.error("verifyOtp Error:", error);
       return NextResponse.json(
         { error: "Failed to verify OTP" },
-        { status: status.INTERNAL_SERVER_ERROR }
-      );
-    }
-  },
-  
-  async firebaseSession(request: Request) {
-    try {
-      const { phone, name, role } = await request.json();
-
-      if (!phone) {
-        return NextResponse.json(
-          { error: "Phone number is required" },
-          { status: status.BAD_REQUEST }
-        );
-      }
-
-      const cleanPhone = phone.trim();
-
-      // Find or create user in Prisma database
-      let user = await prisma.user.findFirst({
-        where: { phone: cleanPhone, deletedAt: null },
-      });
-
-      if (!user) {
-        const cleanDigits = cleanPhone.replace(/\D/g, "");
-        const tempEmail = `${cleanDigits.slice(-10)}@phone.workhub`;
-
-        const existingByTempEmail = await prisma.user.findUnique({
-          where: { email: tempEmail },
-        });
-
-        if (existingByTempEmail) {
-          user = existingByTempEmail;
-        } else {
-          user = await prisma.user.create({
-            data: {
-              phone: cleanPhone,
-              email: tempEmail,
-              name: name || "Phone User",
-              password: "",
-              role: role || "CUSTOMER",
-              status: "ACTIVE",
-            },
-          });
-        }
-      }
-
-      // 8. Handle token signing failure properly
-      let token = "";
-      try {
-        token = signToken({
-          userId: user.id.toString(),
-          email: user.email,
-          role: user.role,
-        });
-      } catch (tokenErr: any) {
-        console.error("JWT signing failed during firebaseSession:", tokenErr);
-        return NextResponse.json(
-          { error: "Failed to generate authentication token" },
-          { status: status.INTERNAL_SERVER_ERROR }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          message: "Firebase Phone Authentication successful",
-          token,
-          user: {
-            id: user.id.toString(),
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-          },
-        },
-        { status: status.OK }
-      );
-    } catch (error: any) {
-      console.error("Firebase Auth Session Error:", error);
-      return NextResponse.json(
-        { error: "Failed to create session" },
         { status: status.INTERNAL_SERVER_ERROR }
       );
     }

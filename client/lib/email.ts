@@ -37,13 +37,14 @@ export async function sendOtpEmail(toEmail: string, otp: string) {
       });
       console.log(`[Email Sent Successfully] OTP ${otp} sent to ${toEmail}`);
       return { sent: true, method: "smtp" };
-    } catch (err: any) {
-      console.error(`[SMTP Dispatch Failed]:`, err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown SMTP error";
+      console.error(`[SMTP Dispatch Failed]:`, message);
       return {
         sent: false,
         method: "smtp_error",
         reason: "Gmail authentication failed. Please generate a 16-character App Password at https://myaccount.google.com/apppasswords",
-        errorDetails: err.message,
+        errorDetails: message,
       };
     }
   } else {

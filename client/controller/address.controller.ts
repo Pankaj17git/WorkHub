@@ -87,7 +87,7 @@ export const addressController = {
       };
 
       return apiResponse.success({ address: formattedAddress }, Status.CREATED, "Address added successfully");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding address:", error);
       return apiResponse.internalError("Failed to add address");
     }
@@ -133,7 +133,7 @@ export const addressController = {
       };
 
       return apiResponse.success({ address: formattedAddress });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching address:", error);
       return apiResponse.internalError("Failed to fetch address");
     }

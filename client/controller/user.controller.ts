@@ -13,11 +13,15 @@ export const userController = {
   async updateProfile(req: NextRequest) {
     try {
       const userId = await authMiddleware(req);
-      if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: status.UNAUTHORIZED });
+
+      if (userId === null) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: status.UNAUTHORIZED }
+        );
       }
 
-      const existingUser = await prisma.user.findUnique({ where: { id: userId.toString() } });
+      const existingUser = await prisma.user.findUnique({ where: { id: userId } });
       if (!existingUser) {
         return NextResponse.json({ error: "User not found" }, { status: status.NOT_FOUND });
       }
@@ -45,7 +49,7 @@ export const userController = {
 
       let user;
       try {
-        let updatedUser = await prisma.user.update({
+        const updatedUser = await prisma.user.update({
           where: { id: BigInt(userId) },
           data: { profileImage: record.url },
           select: { id: true, profileImage: true /* ...whatever's safe to return */ },
@@ -74,7 +78,7 @@ export const userController = {
       }
 
       return NextResponse.json({ user }, { status: status.OK });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Profile update failed:", error);
       return NextResponse.json(
         { error: "Profile update failed" },
