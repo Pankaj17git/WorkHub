@@ -21,7 +21,7 @@ model Job {
   currency    String?  @db.VarChar(10)
 
   skills       Json
-  status       String   @default("OPEN") @db.VarChar(20)
+  status       Status   @default(OPEN)
 
   assignedToId BigInt?  @map("assigned_to")
   assignedTo   Worker?  @relation("AssignedWorker", fields: [assignedToId], references: [id])

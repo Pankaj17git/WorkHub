@@ -29,6 +29,35 @@ const verifyOtpSchema = z
   });
 
 export const authController = {
+  /**
+   * @swagger
+   * /api/auth/login:
+   *   post:
+   *     tags: [Auth]
+   *     summary: Login with email & password
+   *     description: Authenticates user and returns JWT token.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/LoginRequest'
+   *     responses:
+   *       200:
+   *         description: Login successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/LoginResponse'
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       401:
+   *         $ref: '#/components/responses/Unauthorized'
+   *       429:
+   *         $ref: '#/components/responses/TooManyRequests'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async login(request: Request) {
     try {
       // Rate limiting (10 attempts per 15 minutes per IP)
@@ -107,6 +136,35 @@ export const authController = {
     }
   },
 
+  /**
+   * @swagger
+   * /api/auth/register:
+   *   post:
+   *     tags: [Auth]
+   *     summary: Register a new user
+   *     description: Creates a new user account with role.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/RegisterRequest'
+   *     responses:
+   *       201:
+   *         description: User registered successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/RegisterResponse'
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       409:
+   *         $ref: '#/components/responses/Conflict'
+   *       429:
+   *         $ref: '#/components/responses/TooManyRequests'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async register(request: Request) {
     try {
       // Rate limiting (5 registrations per 15 minutes per IP)
@@ -214,6 +272,33 @@ export const authController = {
     }
   },
 
+  /**
+   * @swagger
+   * /api/auth/otp/send:
+   *   post:
+   *     tags: [OTP]
+   *     summary: Send OTP to user
+   *     description: Generates a 6-digit OTP and dispatches it.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/SendOtpRequest'
+   *     responses:
+   *       200:
+   *         description: OTP dispatched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/SendOtpResponse'
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       404:
+   *         $ref: '#/components/responses/NotFound'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async sendOtp(request: Request) {
     try {
       const ip = getClientIp(request);
@@ -302,6 +387,33 @@ export const authController = {
     }
   },
 
+  /**
+   * @swagger
+   * /api/auth/otp/verify:
+   *   post:
+   *     tags: [OTP]
+   *     summary: Verify an OTP
+   *     description: Verifies 6-digit OTP code and returns JWT token.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/VerifyOtpRequest'
+   *     responses:
+   *       200:
+   *         description: OTP verified successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/VerifyOtpResponse'
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       404:
+   *         $ref: '#/components/responses/NotFound'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async verifyOtp(request: Request) {
     try {
       const ip = getClientIp(request);

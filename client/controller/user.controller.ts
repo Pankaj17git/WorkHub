@@ -9,10 +9,45 @@ import { validateFile } from "@/middleware/validateUpload.middleware";
 
 
 export const userController = {
-
+  /**
+   * @swagger
+   * /api/user/update-profile:
+   *   patch:
+   *     tags: [User]
+   *     summary: Update user profile image
+   *     description: Uploads a new profile image for the authenticated user.
+   *     security:
+   *       - BearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required: [profileImage]
+   *             properties:
+   *               profileImage:
+   *                 type: string
+   *                 format: binary
+   *     responses:
+   *       200:
+   *         description: Profile updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UpdateProfileResponse'
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       401:
+   *         $ref: '#/components/responses/Unauthorized'
+   *       404:
+   *         $ref: '#/components/responses/NotFound'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async updateProfile(req: NextRequest) {
     try {
-      const userId = await authMiddleware(req);
+      const userId = authMiddleware(req);
 
       if (userId === null) {
         return NextResponse.json(
