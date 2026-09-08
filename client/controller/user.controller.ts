@@ -9,15 +9,54 @@ import { validateFile } from "@/middleware/validateUpload.middleware";
 
 
 export const userController = {
-
+  /**
+   * @swagger
+   * /api/user/update-profile:
+   *   patch:
+   *     tags: [User]
+   *     summary: Update user profile image
+   *     description: Uploads a new profile image for the authenticated user.
+   *     security:
+   *       - BearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required: [profileImage]
+   *             properties:
+   *               profileImage:
+   *                 type: string
+   *                 format: binary
+   *     responses:
+   *       200:
+   *         description: Profile updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UpdateProfileResponse'
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       401:
+   *         $ref: '#/components/responses/Unauthorized'
+   *       404:
+   *         $ref: '#/components/responses/NotFound'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async updateProfile(req: NextRequest) {
     try {
-      const userId = await authMiddleware(req);
-      if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: status.UNAUTHORIZED });
+      const userId = authMiddleware(req);
+
+      if (userId === null) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: status.UNAUTHORIZED }
+        );
       }
 
-      const existingUser = await prisma.user.findUnique({ where: { id: userId.toString() } });
+      const existingUser = await prisma.user.findUnique({ where: { id: userId } });
       if (!existingUser) {
         return NextResponse.json({ error: "User not found" }, { status: status.NOT_FOUND });
       }
@@ -45,7 +84,7 @@ export const userController = {
 
       let user;
       try {
-        let updatedUser = await prisma.user.update({
+        const updatedUser = await prisma.user.update({
           where: { id: BigInt(userId) },
           data: { profileImage: record.url },
           select: { id: true, profileImage: true /* ...whatever's safe to return */ },
@@ -74,7 +113,7 @@ export const userController = {
       }
 
       return NextResponse.json({ user }, { status: status.OK });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Profile update failed:", error);
       return NextResponse.json(
         { error: "Profile update failed" },

@@ -4,20 +4,52 @@ import { z } from "zod";
 import { authMiddleware } from "@/middleware/auth.middleware";
 import { status as Status } from "@/constants/statusCodes";
 import { apiResponse } from "@/lib/apiResponse";
+import { addressService } from "@/services/address.service";
 
 const addAddressSchema = z.object({
-  address: z.string().min(1, "Address line is required"),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  address: z.string({ error: "Address line is required" }).min(1, "Address line is required"),
+  city: z.string({ error: "City is required" }).min(1, "City is required"),
+  state: z.string({ error: "State is required" }).min(1, "State is required"),
+  country: z.string({ error: "Country is required" }).min(1, "Country is required"),
+  latitude: z.number({ error: "Latitude is required" }).min(1, "Latitude is required"),
+  longitude: z.number({ error: "Longitude is required" }).min(1, "Longitude is required"),
 });
 
 export const addressController = {
+  /**
+   * @swagger
+   * /api/address:
+   *   post:
+   *     tags: [Address]
+   *     summary: Add or update address
+   *     description: Creates an address record and connects it to the user profile.
+   *     security:
+   *       - BearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/AddAddressRequest'
+   *     responses:
+   *       201:
+   *         description: Address added successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/AddAddressResponse'
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       401:
+   *         $ref: '#/components/responses/Unauthorized'
+   *       404:
+   *         $ref: '#/components/responses/NotFound'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async addAddress(request: NextRequest) {
     try {
-      const userId = await authMiddleware(request);
+      const userId = authMiddleware(request);
       if (!userId || typeof userId === "object") {
         return apiResponse.unauthorized();
       }
@@ -42,16 +74,14 @@ export const addressController = {
       }
 
       // Create new address record
-      const newAddress = await prisma.address.create({
-        data: {
-          address,
-          city: city || null,
-          state: state || null,
-          country: country || null,
-          latitude: latitude ?? null,
-          longitude: longitude ?? null,
-        },
-      });
+      const newAddress = await addressService.createAddress({
+        address,
+        city,
+        state,
+        country,
+        latitude,
+        longitude,
+      })
 
       // Link address to user's profile (Customer or Worker)
       if (user.customer) {
@@ -87,15 +117,38 @@ export const addressController = {
       };
 
       return apiResponse.success({ address: formattedAddress }, Status.CREATED, "Address added successfully");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding address:", error);
-      return apiResponse.internalError("Failed to add address");
+       return apiResponse.internalError("Failed to add address");
     }
   },
 
+  /**
+   * @swagger
+   * /api/address:
+   *   get:
+   *     tags: [Address]
+   *     summary: Get authenticated user address
+   *     description: Fetches the currently linked address for the authenticated user.
+   *     security:
+   *       - BearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Address fetched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/GetAddressResponse'
+   *       401:
+   *         $ref: '#/components/responses/Unauthorized'
+   *       404:
+   *         $ref: '#/components/responses/NotFound'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
   async getAddress(request: NextRequest) {
     try {
-      const userId = await authMiddleware(request);
+      const userId = authMiddleware(request);
       if (!userId || typeof userId === "object") {
         return apiResponse.unauthorized();
       }
@@ -133,7 +186,7 @@ export const addressController = {
       };
 
       return apiResponse.success({ address: formattedAddress });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching address:", error);
       return apiResponse.internalError("Failed to fetch address");
     }
