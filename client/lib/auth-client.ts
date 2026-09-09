@@ -8,6 +8,7 @@ export interface SessionUser {
   name?: string | null;
   phone?: string | null;
   role: string;
+  profileImage?: string | null;
 }
 
 const TOKEN_COOKIE = "wh_token";
@@ -35,6 +36,17 @@ export function saveSession(token: string, user: SessionUser) {
   cachedRaw = JSON.stringify(user);
   cachedUser = user;
   listeners.forEach((listener) => listener());
+}
+
+export function updateSessionUser(updates: Partial<SessionUser>) {
+  const current = getUser();
+  if (current) {
+    const updated: SessionUser = { ...current, ...updates };
+    setCookie(USER_COOKIE, JSON.stringify(updated));
+    cachedRaw = JSON.stringify(updated);
+    cachedUser = updated;
+    listeners.forEach((listener) => listener());
+  }
 }
 
 export function getToken(): string | null {

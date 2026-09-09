@@ -3,7 +3,9 @@ import jwt from "jsonwebtoken";
 
 export const authMiddleware = (req: NextRequest): bigint | null => {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
+    const headerToken = req.headers.get("Authorization")?.split(" ")[1];
+    const cookieToken = req.cookies.get("wh_token")?.value;
+    const token = headerToken || cookieToken;
 
     if (!token) {
       return null;

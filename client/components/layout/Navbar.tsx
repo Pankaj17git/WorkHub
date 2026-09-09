@@ -115,8 +115,12 @@ export default function Navbar() {
             {/* Login / Account Buttons */}
             {session ? (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#091426] bg-[#f1f5f9] rounded-xl border border-[#e2e8f0]">
-                  <User className="w-3.5 h-3.5 text-[#0051d5]" />
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#091426] bg-[#f1f5f9] hover:bg-[#e2e8f0] rounded-xl border border-[#e2e8f0] transition-colors group cursor-pointer"
+                  title="Manage Profile & Address"
+                >
+                  <User className="w-3.5 h-3.5 text-[#0051d5] group-hover:scale-110 transition-transform" />
                   <span className="max-w-28 truncate">{session.name || session.email}</span>
                   <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
                     session.role === 'WORKER'
@@ -125,7 +129,7 @@ export default function Navbar() {
                   }`}>
                     {session.role === 'WORKER' ? 'Pro' : 'Customer'}
                   </span>
-                </div>
+                </Link>
                 <button
                   onClick={() => { clearSession(); router.push('/login'); }}
                   className="p-2 text-xs font-semibold text-[#64748b] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer"
@@ -255,10 +259,15 @@ export default function Navbar() {
 
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f1f5f9]">
                 {session ? (
-                  <div className="col-span-2 flex items-center justify-between px-3 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl">
+                  <Link
+                    href="/profile"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="col-span-2 flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] hover:bg-[#e2e8f0] rounded-xl transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-[#0051d5]" />
                       <span className="truncate">{session.name || session.email}</span>
+                      <span className="text-[10px] text-[#0051d5] font-semibold">(Edit Profile)</span>
                     </div>
                     <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
                       session.role === 'WORKER'
@@ -267,7 +276,7 @@ export default function Navbar() {
                     }`}>
                       {session.role === 'WORKER' ? 'Pro' : 'Customer'}
                     </span>
-                  </div>
+                  </Link>
                 ) : (
                   <>
                     <Link
