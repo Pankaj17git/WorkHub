@@ -1,0 +1,24 @@
+enum StaffingRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+  CANCELLED
+}
+
+model StaffingRequest {
+  id                  BigInt                @id @default(autoincrement())
+  jobId               BigInt                @map("job_id")
+  job                 Job                   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  requestedByWorkerId BigInt?               @map("requested_by_worker_id")
+  requestedByWorker   Worker?               @relation(fields: [requestedByWorkerId], references: [id], onDelete: SetNull)
+  additionalWorkers   Int                   @map("additional_workers")
+  reason              String                @db.Text
+  status              StaffingRequestStatus @default(PENDING)
+
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([jobId])
+  @@map("staffing_requests")
+}

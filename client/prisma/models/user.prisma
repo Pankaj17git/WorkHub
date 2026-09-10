@@ -14,8 +14,12 @@ model User {
   roleRef         Role?     @relation(fields: [roleId], references: [id])
   otps            Otp[]
   uploads         Upload[]
-  worker          Worker?   
-  customer        Customer?   
+  worker              Worker?   
+  customer            Customer?   
+  notifications       Notification[]
+  sentMessages        Message[]
+  auditLogs           AuditLog[]
+  conversationMembers ConversationMember[]
 
   @@index([deletedAt])
   @@map("users")

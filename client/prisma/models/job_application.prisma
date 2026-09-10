@@ -1,0 +1,26 @@
+enum ApplicationStatus {
+  SUBMITTED
+  WITHDRAWN
+  SHORTLISTED
+  SELECTED
+  REJECTED
+}
+
+model JobApplication {
+  id            BigInt            @id @default(autoincrement())
+  jobId         BigInt            @map("job_id")
+  job           Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  workerId      BigInt            @map("worker_id")
+  worker        Worker            @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  message       String?           @db.Text
+  proposedPrice Decimal?          @map("proposed_price") @db.Decimal(10, 2)
+  status        ApplicationStatus @default(SUBMITTED)
+
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@unique([jobId, workerId])
+  @@index([jobId, status])
+  @@index([workerId])
+  @@map("job_applications")
+}

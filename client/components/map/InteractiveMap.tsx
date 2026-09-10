@@ -29,11 +29,10 @@ import {
   Loader2,
   X,
   MapPinned,
-  Building2,
 } from "lucide-react";
 
 // Custom modern SVG Marker Icons
-const createWorkHubIcon = (color: string = "#4f46e5", label: string = "Pin") => {
+const createWorkHubIcon = (color: string = "#4f46e5") => {
   return L.divIcon({
     className: "workhub-map-marker",
     html: `
@@ -84,8 +83,8 @@ const createWorkHubIcon = (color: string = "#4f46e5", label: string = "Pin") => 
   });
 };
 
-const defaultPinIcon = createWorkHubIcon("#2563eb", "Pin");
-const userLocationIcon = createWorkHubIcon("#10b981", "You");
+const defaultPinIcon = createWorkHubIcon("#2563eb");
+const userLocationIcon = createWorkHubIcon("#10b981");
 
 interface MapControllerProps {
   onLocationFound: (latlng: L.LatLng, accuracy: number) => void;
@@ -98,7 +97,6 @@ interface MapControllerProps {
 function MapController({
   onLocationFound,
   onMapClick,
-  isLocating,
   setIsLocating,
   clickMode,
 }: MapControllerProps) {
@@ -153,7 +151,7 @@ function GeoSearchMapControl({
 
     map.addControl(searchControl);
 
-    const handleShowLocation = (e: any) => {
+    const handleShowLocation = (e: { location?: { x: number; y: number; label: string } }) => {
       if (e && e.location) {
         onLocationSelect(e.location.y, e.location.x, e.location.label);
       }
@@ -355,18 +353,21 @@ export default function InteractiveMap({
 
   // Debounced autocomplete search using leaflet-geosearch provider
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
-      setSearchResults([]);
-      return;
+    const trimmed = searchQuery.trim();
+    if (!trimmed || trimmed.length < 2) {
+      const timer = setTimeout(() => {
+        setSearchResults([]);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const results = await searchProvider.search({ query: searchQuery.trim() });
+        const results = await searchProvider.search({ query: trimmed });
         if (results && results.length > 0) {
           setSearchResults(
-            results.slice(0, 6).map((r: any) => ({
+            results.slice(0, 6).map((r: { x: number; y: number; label: string }) => ({
               lat: r.y,
               lng: r.x,
               label: r.label,

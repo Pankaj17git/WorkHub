@@ -1,0 +1,39 @@
+enum NotificationType {
+  JOB_APPLICATION_SUBMITTED
+  JOB_APPLICATION_SELECTED
+  JOB_APPLICATION_REJECTED
+  DIRECT_HIRE_REQUESTED
+  DIRECT_HIRE_ACCEPTED
+  DIRECT_HIRE_DECLINED
+  TEAM_INVITATION_RECEIVED
+  TEAM_INVITATION_ACCEPTED
+  TEAM_INVITATION_DECLINED
+  STAFFING_REQUEST_CREATED
+  STAFFING_REQUEST_APPROVED
+  STAFFING_REQUEST_REJECTED
+  ASSIGNMENT_CONFIRMED
+  ASSIGNMENT_ON_THE_WAY
+  ASSIGNMENT_ARRIVED
+  ASSIGNMENT_STARTED
+  ASSIGNMENT_COMPLETED
+  ASSIGNMENT_CANCELLED
+  NEW_MESSAGE
+  NEW_REVIEW
+}
+
+model Notification {
+  id            BigInt           @id @default(autoincrement())
+  userId        BigInt           @map("user_id")
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          NotificationType
+  title         String           @db.VarChar(255)
+  body          String           @db.Text
+  referenceType String?          @map("reference_type") @db.VarChar(50)
+  referenceId   BigInt?          @map("reference_id")
+  isRead        Boolean          @default(false) @map("is_read")
+
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}

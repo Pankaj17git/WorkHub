@@ -1,0 +1,60 @@
+enum AssignmentStatus {
+  ASSIGNED
+  CONFIRMED
+  ON_THE_WAY
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AssignmentRole {
+  LEAD
+  MEMBER
+}
+
+model Assignment {
+  id                  BigInt             @id @default(autoincrement())
+  jobId               BigInt?            @map("job_id")
+  job                 Job?               @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  directHireRequestId BigInt?            @unique @map("direct_hire_request_id")
+  directHireRequest   DirectHireRequest? @relation(fields: [directHireRequestId], references: [id], onDelete: SetNull)
+
+  customerId          BigInt             @map("customer_id")
+  customer            Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  workerId            BigInt             @map("worker_id")
+  worker              Worker             @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  role                AssignmentRole     @default(MEMBER)
+  scheduledDate       DateTime           @map("scheduled_date") @db.Date
+  startTime           String             @map("start_time") @db.VarChar(10)
+  endTime             String             @map("end_time") @db.VarChar(10)
+
+  startOtp            String?            @map("start_otp") @db.VarChar(6)
+  otpExpiresAt        DateTime?          @map("otp_expires_at") @db.Timestamp(6)
+
+  status              AssignmentStatus   @default(ASSIGNED)
+
+  // Tracking timestamps
+  confirmedAt         DateTime?          @map("confirmed_at") @db.Timestamp(6)
+  onTheWayAt          DateTime?          @map("on_the_way_at") @db.Timestamp(6)
+  arrivedAt           DateTime?          @map("arrived_at") @db.Timestamp(6)
+  startedAt           DateTime?          @map("started_at") @db.Timestamp(6)
+  completedAt         DateTime?          @map("completed_at") @db.Timestamp(6)
+  cancelledAt         DateTime?          @map("cancelled_at") @db.Timestamp(6)
+  cancellationReason  String?            @map("cancellation_reason") @db.Text
+
+  review              Review?
+  conversations       Conversation[]
+  teamInvitations     TeamInvitation[]
+
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([workerId, scheduledDate])
+  @@index([workerId, status])
+  @@index([jobId])
+  @@index([customerId])
+  @@index([status])
+  @@map("assignments")
+}

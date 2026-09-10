@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -22,7 +22,15 @@ function SignupFormContent() {
   const searchParams = useSearchParams();
   const urlRole = searchParams.get('role');
 
-  const [accountType, setAccountType] = useState<'CUSTOMER' | 'WORKER'>('CUSTOMER');
+  const [accountType, setAccountType] = useState<'CUSTOMER' | 'WORKER'>(() => (urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'));
+  const [prevUrlRole, setPrevUrlRole] = useState(urlRole);
+  if (urlRole !== prevUrlRole) {
+    setPrevUrlRole(urlRole);
+    if (urlRole === 'WORKER' || urlRole === 'CUSTOMER') {
+      setAccountType(urlRole);
+    }
+  }
+
   const [step, setStep] = useState<'FORM' | 'OTP'>('FORM');
 
   const [fullName, setFullName] = useState('');
@@ -32,14 +40,6 @@ function SignupFormContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (urlRole === 'WORKER') {
-      setAccountType('WORKER');
-    } else if (urlRole === 'CUSTOMER') {
-      setAccountType('CUSTOMER');
-    }
-  }, [urlRole]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -22,19 +22,19 @@ function LoginFormContent() {
   const redirectUrl = searchParams.get('redirect');
   const errorCode = searchParams.get('error');
 
-  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>('CUSTOMER');
+  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>(() => (urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'));
+  const [prevUrlRole, setPrevUrlRole] = useState(urlRole);
+  if (urlRole !== prevUrlRole) {
+    setPrevUrlRole(urlRole);
+    if (urlRole === 'WORKER' || urlRole === 'CUSTOMER') {
+      setRole(urlRole);
+    }
+  }
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (urlRole === 'WORKER') {
-      setRole('WORKER');
-    } else if (urlRole === 'CUSTOMER') {
-      setRole('CUSTOMER');
-    }
-  }, [urlRole]);
 
   let initialNotice: string | null = null;
   if (errorCode === 'unauthorized_worker_access') {

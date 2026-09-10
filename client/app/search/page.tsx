@@ -99,7 +99,7 @@ function SearchContent() {
             </div>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as 'recommended' | 'rating' | 'distance' | 'price_low')}
               className="px-3 py-2 text-xs font-semibold text-[#091426] bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0051d5] cursor-pointer"
             >
               <option value="recommended">Most Recommended</option>
