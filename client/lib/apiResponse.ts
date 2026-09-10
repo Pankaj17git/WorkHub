@@ -1,6 +1,23 @@
 import { NextResponse } from "next/server";
 import { status as Status } from "@/constants/statusCodes";
 
+// Enable JSON.stringify to serialize BigInt across all API responses
+declare global {
+  interface BigInt {
+    toJSON(): string;
+  }
+}
+
+if (!("toJSON" in BigInt.prototype)) {
+  Object.defineProperty(BigInt.prototype, "toJSON", {
+    value: function () {
+      return this.toString();
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
 export const apiResponse = {
   /**
    * Send a successful JSON response

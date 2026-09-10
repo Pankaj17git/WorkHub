@@ -5,6 +5,7 @@ import { apiResponse } from "@/lib/apiResponse";
 import { getAuthActor } from "@/lib/authActor";
 import { JobService } from "@/services/jobs/job.service";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 const addressSchema = z.object({
   address: z.string().min(1, "Address line is required"),
@@ -38,12 +39,18 @@ interface SerializableJob {
   id: bigint | number | string;
   customerId?: bigint | number | string | null;
   addressId?: bigint | number | string | null;
-  minAmount?: bigint | number | string | null;
-  maxAmount?: bigint | number | string | null;
+  minAmount?: Prisma.Decimal | bigint | number | string | null;
+  maxAmount?: Prisma.Decimal | bigint | number | string | null;
   address?: {
     id: bigint | number | string;
-    latitude?: number | string | null;
-    longitude?: number | string | null;
+    latitude?: Prisma.Decimal | number | string | null;
+    longitude?: Prisma.Decimal | number | string | null;
+    [key: string]: unknown;
+  } | null;
+  customer?: {
+    id?: bigint | number | string;
+    userId?: bigint | number | string;
+    addressId?: bigint | number | string | null;
     [key: string]: unknown;
   } | null;
   [key: string]: unknown;
@@ -55,16 +62,26 @@ function serializeJob(job: SerializableJob) {
     id: job.id.toString(),
     customerId: job.customerId?.toString(),
     addressId: job.addressId?.toString(),
-    minAmount: job.minAmount ? job.minAmount.toString() : null,
-    maxAmount: job.maxAmount ? job.maxAmount.toString() : null,
+    minAmount: job.minAmount != null ? job.minAmount.toString() : null,
+    maxAmount: job.maxAmount != null ? job.maxAmount.toString() : null,
     address: job.address
       ? {
           ...job.address,
           id: job.address.id.toString(),
-          latitude: job.address.latitude ? Number(job.address.latitude) : null,
-          longitude: job.address.longitude ? Number(job.address.longitude) : null,
+          latitude: job.address.latitude != null ? Number(job.address.latitude.toString()) : null,
+          longitude: job.address.longitude != null ? Number(job.address.longitude.toString()) : null,
         }
       : null,
+    ...(job.customer
+      ? {
+          customer: {
+            ...job.customer,
+            id: job.customer.id?.toString(),
+            userId: job.customer.userId?.toString(),
+            addressId: job.customer.addressId?.toString(),
+          },
+        }
+      : {}),
   };
 }
 
@@ -224,6 +241,7 @@ export const JobController = {
   async applyToJob(request: NextRequest, jobIdStr: string) {
     try {
       const actor = await getAuthActor(request);
+      console.log("actor-----------------", actor)
       if (!actor || !actor.worker) {
         return apiResponse.forbidden("Only registered workers can apply to jobs");
       }

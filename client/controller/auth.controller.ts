@@ -374,6 +374,7 @@ export const authController = {
           otpId: otpRecord.id.toString(),
           expiresAt: otpRecord.expiresAt,
           emailSent: emailResult.sent,
+          plainOtp: plainOtp
         },
         { status: status.OK }
       );
