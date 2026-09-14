@@ -10,7 +10,7 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import L from "leaflet";
+import L, { type LeafletEventHandlerFn } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
@@ -151,7 +151,8 @@ function GeoSearchMapControl({
 
     map.addControl(searchControl);
 
-    const handleShowLocation = (e: { location?: { x: number; y: number; label: string } }) => {
+    const handleShowLocation: LeafletEventHandlerFn = (event) => {
+      const e = event as unknown as { location?: { x: number; y: number; label: string } };
       if (e && e.location) {
         onLocationSelect(e.location.y, e.location.x, e.location.label);
       }

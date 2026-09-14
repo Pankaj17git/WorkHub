@@ -8,7 +8,8 @@ import {
   ArrowLeftRight, 
   Menu, 
   LogOut,
-  User
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
@@ -83,11 +84,20 @@ export default function WorkerNavbar({ onToggleSidebar }: WorkerNavbarProps) {
           </button>
         </div>
 
+        {/* Messages */}
+        <Link
+          href="/messages"
+          className="p-2 rounded-xl text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] transition-colors"
+          title="Messages"
+        >
+          <MessageSquare className="w-5 h-5 text-[#0051d5]" />
+        </Link>
+
         {/* Notifications Icon with Badge */}
         <Link
-          href="/worker/jobs"
+          href="/notifications"
           className="relative p-2 rounded-xl text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] transition-colors"
-          title="Incoming Job Requests"
+          title="Notifications"
         >
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[#d97706] border-2 border-white ring-1 ring-[#d97706]/40" />

@@ -10,7 +10,10 @@ import {
   Wallet, 
   UserCheck, 
   ShieldCheck, 
-  ArrowLeftRight
+  ArrowLeftRight,
+  Briefcase,
+  Users,
+  MessageSquare
 } from 'lucide-react';
 import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
@@ -18,13 +21,23 @@ interface WorkerSidebarProps {
   onClose?: () => void;
 }
 
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+}
+
 export default function WorkerSidebar({ onClose }: WorkerSidebarProps) {
   const pathname = usePathname();
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/worker/dashboard', icon: LayoutDashboard },
-    { label: 'Job Requests', href: '/worker/jobs', icon: Inbox, badge: '2 New' },
+    { label: 'Marketplace Jobs', href: '/jobs', icon: Briefcase },
+    { label: 'Inbound Requests', href: '/worker/jobs', icon: Inbox, badge: 'New' },
+    { label: 'Network & Teams', href: '/worker/network', icon: Users },
+    { label: 'Messages', href: '/messages', icon: MessageSquare },
     { label: 'My Services & Rates', href: '/worker/services', icon: Wrench },
     { label: 'Earnings & Payouts', href: '/worker/earnings', icon: Wallet },
     { label: 'Manage Profile', href: '/worker/profile', icon: UserCheck },

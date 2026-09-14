@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, MapPin, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import ProCard from '@/components/marketplace/ProCard';
 import FilterSidebar from '@/components/marketplace/FilterSidebar';
 import { MOCK_PROS } from '@/data/mockData';
+import { Professional } from '@/types';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -19,9 +20,54 @@ function SearchContent() {
   const [maxDistance, setMaxDistance] = useState(15);
   const [sortBy, setSortBy] = useState<'recommended' | 'rating' | 'distance' | 'price_low'>('recommended');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [prosList, setProsList] = useState<Professional[]>(MOCK_PROS);
+
+  useEffect(() => {
+    fetch('/api/workers')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.workers && data.workers.length > 0) {
+          const apiPros: Professional[] = data.workers.map((w: any) => ({
+            id: `pro-${w.id}`,
+            name: w.name,
+            title: w.headline,
+            avatar: w.profileImage,
+            coverImage: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&auto=format&fit=crop&q=80',
+            category: w.skills[0] || 'Electricians',
+            location: w.address?.city || 'Chandigarh',
+            distanceKm: 2.1,
+            rating: w.rating || 4.9,
+            reviewCount: w.reviewCount || 20,
+            completedJobs: 110,
+            experienceYears: 5,
+            hourlyRate: w.hourlyRate || 350,
+            verified: w.isVerified,
+            online: true,
+            responseTimeMinutes: 15,
+            about: w.bio,
+            skills: w.skills,
+            services: w.services.map((srv: any) => ({
+              id: srv.id,
+              name: srv.name,
+              description: srv.description || 'Professional service',
+              price: srv.price || 350,
+              durationMinutes: 45,
+            })),
+            reviews: [],
+          }));
+
+          setProsList((prev) => {
+            const existingIds = new Set(apiPros.map((p) => p.id));
+            const filteredMock = prev.filter((p) => !existingIds.has(p.id));
+            return [...apiPros, ...filteredMock];
+          });
+        }
+      })
+      .catch((err) => console.error('Failed to load workers:', err));
+  }, []);
 
   const filteredPros = useMemo(() => {
-    return MOCK_PROS.filter((pro) => {
+    return prosList.filter((pro) => {
       // Query filter
       if (query.trim()) {
         const q = query.toLowerCase();

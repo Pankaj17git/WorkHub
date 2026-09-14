@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,17 +13,36 @@ import {
   User,
   LogOut,
   Briefcase,
-  Sparkles
+  Sparkles,
+  Bell,
+  MessageSquare,
+  Plus
 } from 'lucide-react';
-import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { clearSession, getSessionSnapshot, subscribeToSession, getToken } from '@/lib/auth-client';
 
 export default function Navbar() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Chandigarh');
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
-  /* Full Standard Marketplace Header */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    fetch('/api/notifications?unread=true', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.notifications) {
+          setUnreadCount(data.notifications.length);
+        }
+      })
+      .catch(() => {});
+  }, [session]);
+
   return (
     <header className="sticky top-0 z-50 bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e2e8f0]">
       {/* Top micro alert banner */}
@@ -63,52 +82,95 @@ export default function Navbar() {
           </div>
 
           {/* Quick Search in Nav */}
-          <div className="hidden md:flex flex-1 max-w-md mx-4">
+          <div className="hidden md:flex flex-1 max-w-sm mx-2">
             <form action="/search" method="GET" className="relative w-full">
               <input
                 type="text"
                 name="q"
                 placeholder="Search electrician, plumber, AC service..."
-                className="w-full pl-10 pr-4 py-2 text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-lg focus:outline-none focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5]/15 transition-all text-[#0d1c2e] placeholder:text-[#94a3b8]"
+                className="w-full pl-10 pr-4 py-2 text-xs bg-[#f8f9ff] border border-[#e2e8f0] rounded-lg focus:outline-none focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5]/15 transition-all text-[#0d1c2e] placeholder:text-[#94a3b8]"
               />
-              <Search className="w-4 h-4 text-[#64748b] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-[#64748b] absolute left-3.5 top-1/2 -translate-y-1/2" />
             </form>
           </div>
 
           {/* Nav Actions */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2 lg:gap-3">
             <Link
               href="/search"
-              className="px-3.5 py-2 text-sm font-medium text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
             >
-              Explore Services
+              Services
             </Link>
-            
+
             <Link
-              href="/bookings/pro-1/track"
-              className="px-3.5 py-2 text-sm font-medium text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+              href="/jobs"
+              className="px-3 py-1.5 text-xs font-semibold text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
             >
-              Track Job
+              Jobs
             </Link>
+
+            {session?.role === 'CUSTOMER' && (
+              <>
+                <Link
+                  href="/jobs/new"
+                  className="px-3 py-1.5 text-xs font-bold text-[#0051d5] bg-[#eff6ff] hover:bg-[#dbeafe] rounded-lg border border-[#bfdbfe] transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Post Job</span>
+                </Link>
+
+                <Link
+                  href="/jobs/my-jobs"
+                  className="px-3 py-1.5 text-xs font-semibold text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+                >
+                  My Jobs
+                </Link>
+              </>
+            )}
+
+            {/* In-app Messenger & Notifications */}
+            {session && (
+              <div className="flex items-center gap-1">
+                <Link
+                  href="/messages"
+                  className="p-2 text-[#64748b] hover:text-[#0051d5] hover:bg-[#f8f9ff] rounded-lg transition-colors relative"
+                  title="Messages & Chat"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </Link>
+
+                <Link
+                  href="/notifications"
+                  className="p-2 text-[#64748b] hover:text-[#0051d5] hover:bg-[#f8f9ff] rounded-lg transition-colors relative"
+                  title="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+                  )}
+                </Link>
+              </div>
+            )}
 
             {/* Role-aware CTA: Become a Worker or Worker Dashboard */}
             {session?.role === 'WORKER' ? (
               <Link
                 href="/worker/dashboard"
-                className="px-3.5 py-2 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
+                className="px-3 py-1.5 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
                 title="Go to your pro partner dashboard"
               >
                 <Briefcase className="w-3.5 h-3.5" />
-                <span>Worker Dashboard</span>
+                <span>Worker Hub</span>
               </Link>
             ) : (
               <Link
                 href="/signup?role=WORKER"
-                className="px-3.5 py-2 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs group"
+                className="px-3 py-1.5 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs group"
                 title="Register as a worker and start earning"
               >
                 <Briefcase className="w-3.5 h-3.5 text-[#0d9488] group-hover:scale-110 transition-transform" />
-                <span>Become a Worker</span>
+                <span>Become Pro</span>
               </Link>
             )}
 
@@ -121,7 +183,7 @@ export default function Navbar() {
                   title="Manage Profile & Address"
                 >
                   <User className="w-3.5 h-3.5 text-[#0051d5] group-hover:scale-110 transition-transform" />
-                  <span className="max-w-28 truncate">{session.name || session.email}</span>
+                  <span className="max-w-24 truncate">{session.name || session.email}</span>
                   <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
                     session.role === 'WORKER'
                       ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
@@ -142,14 +204,14 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="px-3.5 py-2 text-sm font-semibold text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-xs font-semibold text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
                 >
                   Log In
                 </Link>
 
                 <Link
                   href="/signup"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-[#0051d5] hover:bg-[#0042b0] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#0051d5] hover:bg-[#0042b0] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1"
                 >
                   Sign Up
                 </Link>
@@ -158,38 +220,16 @@ export default function Navbar() {
           </div>
 
           {/* Mobile hamburger */}
-          <div className="flex md:hidden items-center gap-2">
-            {session?.role === 'WORKER' ? (
+          <div className="flex items-center gap-2 md:hidden">
+            {session && (
               <Link
-                href="/worker/dashboard"
-                className="px-2.5 py-1 text-xs font-bold bg-[#0d9488] text-white rounded-lg flex items-center gap-1"
+                href="/notifications"
+                className="p-2 text-[#64748b] relative"
               >
-                <Briefcase className="w-3 h-3" />
-                <span>Dashboard</span>
-              </Link>
-            ) : (
-              <Link
-                href="/signup?role=WORKER"
-                className="px-2.5 py-1 text-xs font-bold bg-[#f0fdfa] text-[#0d9488] border border-[#a7f3d0] rounded-lg flex items-center gap-1"
-              >
-                <Briefcase className="w-3 h-3" />
-                <span>Join as Pro</span>
-              </Link>
-            )}
-
-            {session ? (
-              <button
-                onClick={() => { clearSession(); router.push('/login'); }}
-                className="px-2.5 py-1 text-xs font-bold text-[#64748b] hover:text-red-600 bg-[#f1f5f9] rounded-lg flex items-center gap-1 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <Link
-                href="/login"
-                className="px-3 py-1 text-xs font-bold text-[#0051d5] bg-[#eff6ff] rounded-lg"
-              >
-                Log In
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                )}
               </Link>
             )}
             <button
@@ -223,14 +263,36 @@ export default function Navbar() {
                 All Services
               </Link>
               <Link
-                href="/bookings/pro-1/track"
+                href="/jobs"
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-3 py-2 text-sm font-medium text-[#0d1c2e] hover:bg-[#f1f5f9] rounded-lg"
               >
-                Track Live Booking
+                Marketplace Jobs
+              </Link>
+              <Link
+                href="/jobs/new"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-sm font-semibold text-[#0051d5] hover:bg-[#eff6ff] rounded-lg flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Post a Job</span>
+              </Link>
+              <Link
+                href="/jobs/my-jobs"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-sm font-medium text-[#0d1c2e] hover:bg-[#f1f5f9] rounded-lg"
+              >
+                My Jobs & Bookings
+              </Link>
+              <Link
+                href="/messages"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-sm font-medium text-[#0d1c2e] hover:bg-[#f1f5f9] rounded-lg flex items-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4 text-[#0051d5]" />
+                <span>Messages</span>
               </Link>
 
-              {/* Become a Worker / Worker Dashboard Mobile Button */}
               {session?.role === 'WORKER' ? (
                 <Link
                   href="/worker/dashboard"
@@ -259,37 +321,44 @@ export default function Navbar() {
 
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f1f5f9]">
                 {session ? (
-                  <Link
-                    href="/profile"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="col-span-2 flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] hover:bg-[#e2e8f0] rounded-xl transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-[#0051d5]" />
-                      <span className="truncate">{session.name || session.email}</span>
-                      <span className="text-[10px] text-[#0051d5] font-semibold">(Edit Profile)</span>
-                    </div>
-                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
-                      session.role === 'WORKER'
-                        ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
-                        : 'bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe]'
-                    }`}>
-                      {session.role === 'WORKER' ? 'Pro' : 'Customer'}
-                    </span>
-                  </Link>
+                  <>
+                    <Link
+                      href="/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="col-span-2 flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] hover:bg-[#e2e8f0] rounded-xl transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-[#0051d5]" />
+                        <span className="truncate">{session.name || session.email}</span>
+                      </div>
+                      <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                        session.role === 'WORKER'
+                          ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
+                          : 'bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe]'
+                      }`}>
+                        {session.role === 'WORKER' ? 'Pro' : 'Customer'}
+                      </span>
+                    </Link>
+                    <button
+                      onClick={() => { clearSession(); router.push('/login'); setMobileMenuOpen(false); }}
+                      className="col-span-2 py-2 text-xs font-bold text-red-600 bg-red-50 rounded-xl"
+                    >
+                      Log Out
+                    </button>
+                  </>
                 ) : (
                   <>
                     <Link
                       href="/login"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full text-center py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl hover:bg-[#e2e8f0] transition-colors"
+                      className="py-2.5 text-center text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl"
                     >
                       Log In
                     </Link>
                     <Link
                       href="/signup"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#0051d5] rounded-xl hover:bg-[#0042b0] transition-colors"
+                      className="py-2.5 text-center text-xs font-bold text-white bg-[#0051d5] rounded-xl shadow-sm"
                     >
                       Sign Up
                     </Link>

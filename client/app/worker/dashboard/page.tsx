@@ -12,16 +12,37 @@ import {
   MapPin,
   Inbox
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import MetricCard from '@/components/worker/MetricCard';
 import { MOCK_WORKER_METRICS, MOCK_INCOMING_REQUESTS } from '@/data/mockWorkerData';
 import PriceTag from '@/components/ui/PriceTag';
-import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { getSessionSnapshot, subscribeToSession, getToken } from '@/lib/auth-client';
+import { Briefcase } from 'lucide-react';
 
 export default function WorkerDashboardPage() {
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
   const firstName = session?.name?.trim().split(/\s+/)[0];
 
   const pendingRequests = MOCK_INCOMING_REQUESTS.filter((j) => j.status === 'PENDING');
+  const [pendingCount, setPendingCount] = useState(pendingRequests.length);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    fetch('/api/direct-hire-requests', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.requests) {
+          const pending = data.requests.filter((r: any) => r.status === 'PENDING');
+          setPendingCount(pending.length);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const activeJob = MOCK_INCOMING_REQUESTS.find((j) => j.status === 'ACCEPTED') || MOCK_INCOMING_REQUESTS[0];
 
   return (
@@ -48,11 +69,18 @@ export default function WorkerDashboardPage() {
 
         <div className="flex items-center gap-3">
           <Link
+            href="/jobs"
+            className="px-4 py-2.5 bg-[#f8f9ff] hover:bg-[#e2e8f0] text-[#091426] text-xs font-bold rounded-xl border border-[#e2e8f0] transition-colors flex items-center gap-1.5"
+          >
+            <Briefcase className="w-4 h-4 text-[#0051d5]" />
+            <span>Marketplace Jobs</span>
+          </Link>
+          <Link
             href="/worker/jobs"
             className="px-4 py-2.5 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2"
           >
             <Inbox className="w-4 h-4" />
-            <span>View Job Requests ({pendingRequests.length})</span>
+            <span>Job Requests ({pendingCount})</span>
           </Link>
           <Link
             href="/worker/earnings"

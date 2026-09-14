@@ -48,10 +48,10 @@ export default function HomePage() {
         />
 
         <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1e293b]/90 border border-[#334155] text-xs font-semibold text-[#38bdf8]">
+          {/* <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1e293b]/90 border border-[#334155] text-xs font-semibold text-[#38bdf8]">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Chandigarh’s #1 Verified Trades & Services Network</span>
-          </div>
+          </div> */}
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
             Book Trusted, Background-Checked <br className="hidden sm:block" />
