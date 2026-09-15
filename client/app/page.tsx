@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   Star,
@@ -18,15 +17,10 @@ import {
   Brush,
   Users,
   Briefcase,
-  User,
-  LogOut,
-  Menu,
-  X,
   CheckCircle2,
   ArrowUpRight,
   Droplet
 } from 'lucide-react';
-import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 import {
   POPULAR_SERVICES,
   HOW_IT_WORKS_STEPS,
@@ -35,201 +29,14 @@ import {
   TRUSTED_BADGES,
 } from '@/data/landingData';
 import Footer from '@/components/layout/Footer';
+import Navbar from '@/components/layout/Navbar';
 
 export default function HomePage() {
-  const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
-
   return (
     <div className="min-h-screen bg-white text-[#0f172a] font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
       
       {/* 1. Header / Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <WorkHubLogo />
-              <div className="flex flex-col">
-                <span className="text-xl font-extrabold tracking-tight text-[#0f172a] leading-none group-hover:text-[#0066f5] transition-colors">
-                  Work<span className="text-[#0066f5]">Hub</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium tracking-wide mt-0.5">
-                  Skilled People, Real Work.
-                </span>
-              </div>
-            </Link>
-
-            {/* Navigation links */}
-            <nav className="hidden md:flex items-center gap-8">
-              <Link
-                href="/"
-                className="text-sm font-bold text-[#0066f5] relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#0066f5] after:rounded-full"
-              >
-                Home
-              </Link>
-              <Link
-                href="/search"
-                className="text-sm font-medium text-slate-600 hover:text-[#0066f5] transition-colors py-1"
-              >
-                For Customers
-              </Link>
-              <Link
-                href={session?.role === 'WORKER' ? '/worker/dashboard' : '/signup?role=WORKER'}
-                className="text-sm font-medium text-slate-600 hover:text-[#0066f5] transition-colors py-1"
-              >
-                For Workers
-              </Link>
-              <a
-                href="#how-it-works"
-                className="text-sm font-medium text-slate-600 hover:text-[#0066f5] transition-colors py-1"
-              >
-                How It Works
-              </a>
-              <a
-                href="#about"
-                className="text-sm font-medium text-slate-600 hover:text-[#0066f5] transition-colors py-1"
-              >
-                About
-              </a>
-            </nav>
-
-            {/* Right Auth actions */}
-            <div className="hidden md:flex items-center gap-3">
-              {session ? (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={session.role === 'WORKER' ? '/worker/dashboard' : '/profile'}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
-                  >
-                    <User className="w-4 h-4 text-[#0066f5]" />
-                    <span className="max-w-28 truncate">{session.name || session.email}</span>
-                  </Link>
-                  <button
-                    onClick={() => {
-                      clearSession();
-                      router.push('/login');
-                    }}
-                    className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                    title="Log Out"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    className="px-5 py-2 text-sm font-semibold text-slate-700 hover:text-[#0066f5] hover:bg-slate-50 rounded-xl transition-colors border border-slate-200"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="px-5 py-2 text-sm font-bold text-white bg-[#0066f5] hover:bg-blue-700 rounded-xl shadow-sm hover:shadow-md transition-all"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
-
-            {/* Mobile hamburger menu */}
-            <div className="flex items-center md:hidden">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile dropdown */}
-          {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-slate-100 space-y-2">
-              <Link
-                href="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm font-semibold text-[#0066f5] bg-blue-50/70 rounded-lg"
-              >
-                Home
-              </Link>
-              <Link
-                href="/search"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
-              >
-                For Customers
-              </Link>
-              <Link
-                href={session?.role === 'WORKER' ? '/worker/dashboard' : '/signup?role=WORKER'}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
-              >
-                For Workers
-              </Link>
-              <a
-                href="#how-it-works"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
-              >
-                How It Works
-              </a>
-              <a
-                href="#about"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
-              >
-                About
-              </a>
-
-              <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-                {session ? (
-                  <>
-                    <Link
-                      href={session.role === 'WORKER' ? '/worker/dashboard' : '/profile'}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="text-center py-2 text-sm font-semibold text-slate-800 bg-slate-100 rounded-xl"
-                    >
-                      {session.name || session.email}
-                    </Link>
-                    <button
-                      onClick={() => {
-                        clearSession();
-                        router.push('/login');
-                        setMobileMenuOpen(false);
-                      }}
-                      className="py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-xl"
-                    >
-                      Log Out
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="text-center py-2 text-sm font-semibold text-slate-700 border border-slate-200 rounded-xl"
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      href="/signup"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="text-center py-2 text-sm font-bold text-white bg-[#0066f5] rounded-xl"
-                    >
-                      Sign Up
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
+      <Navbar />
 
       {/* 2. Hero Section */}
       <section className="relative overflow-hidden pt-8 pb-16 lg:pt-14 lg:pb-24">
@@ -772,47 +579,4 @@ export default function HomePage() {
   );
 }
 
-// Custom WorkHub folded ribbon logo icon matching the design mockup
-function WorkHubLogo() {
-  return (
-    <svg
-      width="34"
-      height="34"
-      viewBox="0 0 40 40"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0"
-    >
-      <defs>
-        <linearGradient id="whGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="100%" stopColor="#4f46e5" />
-        </linearGradient>
-        <linearGradient id="whGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#60a5fa" />
-          <stop offset="100%" stopColor="#2563eb" />
-        </linearGradient>
-        <linearGradient id="whGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#818cf8" />
-          <stop offset="100%" stopColor="#6366f1" />
-        </linearGradient>
-      </defs>
-      {/* Left folded stroke */}
-      <path
-        d="M6 12L13 32C13.5 33.2 15.2 33.2 15.7 32L20 20L13 12H6Z"
-        fill="url(#whGrad1)"
-      />
-      {/* Center diagonal fold */}
-      <path
-        d="M17 12L20 20L24.3 32C24.8 33.2 26.5 33.2 27 32L34 12H27L23 23L20.5 15L19 12H17Z"
-        fill="url(#whGrad2)"
-      />
-      {/* Right folded stroke */}
-      <path
-        d="M27 12L23 23L25.8 31.5C26.1 32.5 27.5 32.5 27.8 31.5L34 12H27Z"
-        fill="url(#whGrad3)"
-      />
-    </svg>
-  );
-}
 
