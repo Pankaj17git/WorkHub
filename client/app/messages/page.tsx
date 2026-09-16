@@ -6,16 +6,11 @@ import Link from 'next/link';
 import {
   MessageSquare,
   Send,
-  User,
-  Search,
-  ArrowLeft,
   Briefcase,
   ShieldCheck,
-  CheckCheck,
-  Clock,
-  Sparkles
 } from 'lucide-react';
 import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { socket } from '@/lib/socketServer';
 
 interface ConversationMember {
   id: string;
@@ -49,7 +44,7 @@ interface Message {
   };
 }
 
-function MessagesContent() {
+export default function MessagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialConvId = searchParams.get('conversationId');
@@ -125,7 +120,78 @@ function MessagesContent() {
     loadConversations();
   }, [targetUserId, router]);
 
-  // Load messages whenever active conversation changes
+  // Initialize socket connection
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    if (!socket.connected) {
+      socket.auth = { token };
+      socket.connect();
+    }
+  }, []);
+
+  // Join/leave active conversation room
+  useEffect(() => {
+    if (!activeConvId) return;
+    socket.emit('conversation:join', activeConvId);
+
+    return () => {
+      socket.emit('conversation:leave', activeConvId);
+    };
+  }, [activeConvId]);
+
+  // Listen for real-time socket messages without fetching GET again
+  useEffect(() => {
+    const handleNewMessage = (msg: Message) => {
+      if (msg.conversationId === activeConvId) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+
+      // Update conversation list preview & timestamp without calling GET
+      setConversations((prev) =>
+        prev
+          .map((c) =>
+            c.id === msg.conversationId
+              ? { ...c, updatedAt: msg.createdAt }
+              : c
+          )
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      );
+    };
+
+    const handleConvUpdated = (data: { conversationId: string; lastMessage: string; updatedAt: string }) => {
+      setConversations((prev) =>
+        prev
+          .map((c) =>
+            c.id === data.conversationId
+              ? { ...c, updatedAt: data.updatedAt }
+              : c
+          )
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      );
+    };
+
+    const handleSocketError = (err: { error?: string; message?: string }) => {
+      console.error('[Socket Error]', err?.error || err?.message);
+      setSending(false);
+    };
+
+    socket.on('message:new', handleNewMessage);
+    socket.on('conversation:updated', handleConvUpdated);
+    socket.on('message:error', handleSocketError);
+
+    return () => {
+      socket.off('message:new', handleNewMessage);
+      socket.off('conversation:updated', handleConvUpdated);
+      socket.off('message:error', handleSocketError);
+    };
+  }, [activeConvId]);
+
+  // Load messages only once when active conversation changes (no polling)
   useEffect(() => {
     if (!activeConvId) return;
     const token = getToken();
@@ -152,16 +218,13 @@ function MessagesContent() {
 
     loadMessages();
 
-    // Poll for new messages every 5 seconds
-    const interval = setInterval(loadMessages, 5000);
     return () => {
       isMounted = false;
-      clearInterval(interval);
     };
   }, [activeConvId]);
 
-  // Send message
-  const handleSendMessage = async (e: React.FormEvent) => {
+  // Send message through socket (no HTTP POST, no repeated GET)
+  const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeConvId) return;
 
@@ -169,31 +232,18 @@ function MessagesContent() {
     if (!token) return;
 
     const outgoingText = newMessage.trim();
-    setNewMessage('');
     setSending(true);
+    setNewMessage('');
 
-    try {
-      const res = await fetch(`/api/conversations/${activeConvId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message: outgoingText }),
-      });
+    socket.emit('message:send', {
+      conversationId: activeConvId,
+      message: outgoingText,
+      token,
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        const sentMsg = data.message || data.data?.message;
-        if (sentMsg) {
-          setMessages((prev) => [...prev, sentMsg]);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to send message:', err);
-    } finally {
+    setTimeout(() => {
       setSending(false);
-    }
+    }, 300);
   };
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
@@ -346,7 +396,7 @@ function MessagesContent() {
 
               {/* Message Input Box */}
               <div className="p-4 bg-white border-t border-[#e2e8f0] shrink-0">
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                <form onSubmit={sendMessage} className="flex items-center gap-2">
                   <input
                     type="text"
                     placeholder="Type your message here..."
@@ -382,10 +432,3 @@ function MessagesContent() {
   );
 }
 
-export default function MessagesPage() {
-  return (
-    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-500">Loading Messenger...</div>}>
-      <MessagesContent />
-    </Suspense>
-  );
-}
