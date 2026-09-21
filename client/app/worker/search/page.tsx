@@ -1,10 +1,12 @@
 
 import SearchPage from '@/components/ui/search'
+import React from 'react'
 
-function WorkerSearch() {
+function JobSearch() {
   return (
     <SearchPage/>
   )
 }
 
-export default WorkerSearch
+export default JobSearch
+

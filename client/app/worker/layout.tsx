@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import WorkerNavbar from '@/components/worker/WorkerNavbar';
 import WorkerSidebar from '@/components/worker/WorkerSidebar';
+import WorkHubBrand from '@/components/ui/WorkHubBrand';
 import { ArrowLeftRight } from 'lucide-react';
 
 export default function WorkerLayout({
@@ -22,20 +23,8 @@ export default function WorkerLayout({
     return (
       <div className="min-h-screen bg-[#f8f9ff] flex flex-col text-[#0d1c2e]">
         {/* Clean Onboarding Header without Dashboard Sidebar */}
-        <header className="bg-[#ffffff] border-b border-[#e2e8f0] h-16 flex items-center px-4 sm:px-6 lg:px-8 justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#091426] to-[#0051d5] flex items-center justify-center text-white font-bold text-base shadow-sm">
-              W<span className="text-[#38bdf8]">H</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-base font-extrabold tracking-tight text-[#091426] leading-none">
-                Work<span className="text-[#0051d5]">Hub</span>
-              </span>
-              <span className="text-[10px] font-bold text-[#0d9488] font-geist tracking-wider uppercase">
-                Pro Onboarding
-              </span>
-            </div>
-          </Link>
+        <header className="bg-white border-b border-[#e2e8f0] h-16 flex items-center px-4 sm:px-6 lg:px-8 justify-between">
+          <WorkHubBrand theme="light" size={34} href="/" tagline="Pro Onboarding" />
 
           <div className="flex items-center gap-3">
             <Link
@@ -72,7 +61,7 @@ export default function WorkerLayout({
           </div>
         </header>
 
-        {/* Full-width Centered Content without Sidebar */}
+        {/* Centered Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
           <div className="w-full">{children}</div>
         </main>
@@ -80,38 +69,36 @@ export default function WorkerLayout({
     );
   }
 
-  // Standard Authenticated Worker Portal with Sidebar
+  // Unified Full-Height Dark Sidebar + Clean Canvas Layout for all Worker Pages
   return (
-    <div className="min-h-screen bg-[#f8f9ff] flex flex-col text-[#0d1c2e]">
-      {/* Worker Sticky Header */}
-      <WorkerNavbar onToggleSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)} />
+    <div className="min-h-screen bg-[#f4f7fc] flex flex-row text-[#0d1c2e] h-screen overflow-hidden">
+      {/* 1. Desktop Fixed Dark Sidebar */}
+      <div className="hidden lg:block shrink-0 h-screen sticky top-0 z-30">
+        <WorkerSidebar />
+      </div>
 
-      {/* Main body: Sidebar + Content */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
-        
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:block shrink-0">
-          <WorkerSidebar />
-        </div>
-
-        {/* Mobile Sidebar Modal */}
-        {mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex">
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-xs"
-              onClick={() => setMobileSidebarOpen(false)}
-            />
-            <div className="relative z-10 w-64 bg-white h-full shadow-2xl">
-              <WorkerSidebar onClose={() => setMobileSidebarOpen(false)} />
-            </div>
+      {/* 2. Mobile Responsive Drawer */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <div className="relative z-10 w-64 bg-[#0A1128] h-full shadow-2xl">
+            <WorkerSidebar onClose={() => setMobileSidebarOpen(false)} />
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Main Worker View Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+      {/* 3. Main Column: Top Navbar + Scrollable Content Viewport */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen h-100vh overflow-y-auto">
+        {/* Sticky Topbar */}
+        <WorkerNavbar onToggleSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)} />
+
+        {/* Page Content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto max-h-calc(100vh - 73px)">
           {children}
         </main>
-
       </div>
     </div>
   );

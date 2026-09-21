@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   Star,
@@ -30,8 +31,28 @@ import {
 } from '@/data/landingData';
 import Footer from '@/components/layout/Footer';
 import Navbar from '@/components/layout/Navbar';
+import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 
 export default function HomePage() {
+  const router = useRouter();
+  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
+
+  useEffect(() => {
+    if (session?.role === 'CUSTOMER') {
+      router.replace('/dashboard');
+    } else if (session?.role === 'WORKER') {
+      router.replace('/worker/dashboard');
+    }
+  }, [session, router]);
+
+  if (session) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#0066f5] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white text-[#0f172a] font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
       

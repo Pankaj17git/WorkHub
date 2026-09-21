@@ -14,6 +14,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { saveSession, resolveLoginRedirect } from '@/lib/auth-client';
+import api, { getApiErrorMessage } from '@/lib/api';
 
 function LoginFormContent() {
   const router = useRouter();
@@ -51,26 +52,13 @@ function LoginFormContent() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Login failed. Please check your credentials.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const { token, user } = data;
+      const res = await api.post('/api/auth/login', { email, password });
+      const { token, user } = res.data;
       saveSession(token, user);
 
       router.push(resolveLoginRedirect(user.role, redirectUrl));
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'));
       setIsSubmitting(false);
     }
   };
@@ -158,7 +146,7 @@ function LoginFormContent() {
             </div>
             <div>
               <strong className="text-sm font-bold text-[#091426] block">
-                Pro Partner Sign In
+                Worker Sign In
               </strong>
               <span className="text-[11px] text-[#64748b] leading-tight block mt-0.5">
                 Access job requests, wallet & earnings
@@ -186,7 +174,7 @@ function LoginFormContent() {
               {role === 'WORKER' ? (
                 <>
                   <Briefcase className="w-3.5 h-3.5" />
-                  <span>Professional Partner Login</span>
+                  <span>Worker Login</span>
                 </>
               ) : (
                 <>

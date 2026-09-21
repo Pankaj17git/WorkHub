@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { clearSession, getSessionSnapshot, subscribeToSession, getToken } from '@/lib/auth-client';
+import api from '@/lib/api';
 import WorkHubLogo from '@/components/ui/WorkHubLogo';
 
 export default function Navbar() {
@@ -46,13 +47,10 @@ export default function Navbar() {
       return;
     }
 
-    fetch('/api/notifications?unread=true', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.notifications) {
-          setUnreadCount(data.notifications.length);
+    api.get('/api/notifications?unread=true')
+      .then((res) => {
+        if (res.data?.notifications) {
+          setUnreadCount(res.data.notifications.length);
         }
       })
       .catch(() => {});
@@ -106,7 +104,8 @@ export default function Navbar() {
     : 'Search workers or services...';
 
   // Helper to determine active tab style
-  const isHomeActive = pathname === '/';
+  const homeHref = isCustomer ? '/dashboard' : isWorker ? '/worker/dashboard' : '/';
+  const isHomeOrDashboardActive = pathname === '/' || pathname === '/dashboard';
   const isFindWorkersActive =
     pathname === '/search' && searchParams?.get('mode') !== 'jobs';
   const isFindJobsActive =
@@ -121,7 +120,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-20 gap-4">
           
           {/* 1. Left: Brand Logo & Tagline */}
-          <Link href="/" className="flex items-center gap-3 group shrink-0">
+          <Link href={homeHref} className="flex items-center gap-3 group shrink-0">
             <WorkHubLogo size={34} />
             <div className="flex flex-col">
               <span className="text-xl font-extrabold tracking-tight text-[#0f172a] leading-none group-hover:text-[#0066f5] transition-colors">
@@ -135,17 +134,17 @@ export default function Navbar() {
 
           {/* 2. Center: Navigation Items with Icons & Active Indicator */}
           <nav className="hidden lg:flex items-center gap-6 xl:gap-8 h-full">
-            {/* Home */}
+            {/* Home / Dashboard */}
             <Link
-              href="/"
+              href={homeHref}
               className={`flex items-center gap-2 text-sm font-semibold h-full border-b-2 transition-colors px-1 ${
-                isHomeActive
+                isHomeOrDashboardActive
                   ? 'text-[#0066f5] border-[#0066f5]'
                   : 'text-slate-600 hover:text-[#0066f5] border-transparent'
               }`}
             >
               <Home className="w-4 h-4" />
-              <span>Home</span>
+              <span>{isCustomer ? 'Dashboard' : 'Home'}</span>
             </Link>
 
             {/* Find Workers (Only Customer & Guest) */}
@@ -322,6 +321,16 @@ export default function Navbar() {
 
                       {/* Menu Links */}
                       <div className="py-1">
+                        {isCustomer && (
+                          <Link
+                            href="/dashboard"
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#0066f5] hover:bg-blue-50 transition-colors"
+                          >
+                            <Home className="w-4 h-4 text-[#0066f5]" />
+                            <span>Customer Dashboard</span>
+                          </Link>
+                        )}
+
                         <Link
                           href="/profile"
                           className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0066f5] transition-colors"
@@ -460,13 +469,13 @@ export default function Navbar() {
 
             <div className="flex flex-col gap-1 pt-2">
               <Link
-                href="/"
+                href={homeHref}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                  isHomeActive ? 'text-[#0066f5] bg-blue-50/70' : 'text-slate-700 hover:bg-slate-50'
+                  isHomeOrDashboardActive ? 'text-[#0066f5] bg-blue-50/70' : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <Home className="w-4 h-4" />
-                <span>Home</span>
+                <span>{isCustomer ? 'Dashboard' : 'Home'}</span>
               </Link>
 
               {(!session || isCustomer) && (

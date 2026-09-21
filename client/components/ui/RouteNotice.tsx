@@ -17,7 +17,7 @@ type Tone = 'warn' | 'info';
 const NOTICES: Record<string, { tone: Tone; text: string }> = {
   unauthorized_worker_access: {
     tone: 'warn',
-    text: 'That’s the pro partner area. You’re signed in as a customer, so we brought you back home.',
+    text: 'That’s the Worker area. You’re signed in as a customer, so we brought you back home.',
   },
   workers_cannot_book: {
     tone: 'warn',

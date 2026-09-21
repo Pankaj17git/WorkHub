@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
 import MessagesContent from '@/components/ui/messages'
-import React from 'react'
 
-const Chat = () => {
+
+export const Chat = () => {
   return (
     <MessagesContent/>
   )

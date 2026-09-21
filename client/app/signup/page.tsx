@@ -190,7 +190,7 @@ function SignupFormContent() {
             </div>
             <div>
               <strong className="text-sm font-bold text-[#091426] block">
-                I&apos;m a Service Pro
+                I&apos;m a Worker
               </strong>
               <span className="text-[11px] text-[#64748b] leading-tight block mt-0.5">
                 Register as a worker to accept jobs & get paid
@@ -218,7 +218,7 @@ function SignupFormContent() {
                 {accountType === 'WORKER' ? (
                   <>
                     <Briefcase className="w-3.5 h-3.5" />
-                    <span>Service Pro Registration</span>
+                    <span>Register as Worker</span>
                   </>
                 ) : (
                   <>

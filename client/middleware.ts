@@ -33,7 +33,23 @@ export function middleware(request: NextRequest) {
   const payload = token ? decodeJwtPayload(token) : null;
   const { pathname } = request.nextUrl;
 
-  // 1. WORKER PROTECTED ROUTES: /worker and /worker/*
+  // 1. HOME ROUTE: /
+  // If user is already logged in, redirect them to their respective dashboard.
+  // The home route / is reserved for first-time visitors / guests.
+  if (pathname === "/") {
+    if (payload?.role === "CUSTOMER") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+    if (payload?.role === "WORKER") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/worker/dashboard";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // 2. WORKER PROTECTED ROUTES: /worker and /worker/*
   if (pathname.startsWith("/worker")) {
     // Unauthenticated: redirect to login as WORKER
     if (!payload) {
@@ -46,14 +62,19 @@ export function middleware(request: NextRequest) {
     // Customer role trying to access worker portal
     if (payload.role !== "WORKER") {
       const url = request.nextUrl.clone();
-      url.pathname = "/";
+      url.pathname = "/dashboard";
       url.search = "?error=unauthorized_worker_access";
       return NextResponse.redirect(url);
     }
   }
 
-  // 2. CUSTOMER PROTECTED ROUTES: /book/* and /bookings/*
-  if (pathname.startsWith("/book") || pathname.startsWith("/bookings")) {
+  // 3. CUSTOMER PROTECTED ROUTES: /dashboard, /book/* and /bookings/*
+  if (
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname.startsWith("/book") ||
+    pathname.startsWith("/bookings")
+  ) {
     // Unauthenticated: redirect to login as CUSTOMER
     if (!payload) {
       const url = request.nextUrl.clone();
@@ -62,7 +83,7 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Worker role trying to access customer booking pages
+    // Worker role trying to access customer dashboard or booking pages
     if (payload.role === "WORKER") {
       const url = request.nextUrl.clone();
       url.pathname = "/worker/dashboard";
@@ -76,6 +97,9 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
+    "/dashboard",
+    "/dashboard/:path*",
     "/worker",
     "/worker/:path*",
     "/book/:path*",
