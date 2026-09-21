@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useSyncExternalStore, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useContext, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   MessageSquare,
@@ -9,250 +8,40 @@ import {
   Briefcase,
   ShieldCheck,
 } from 'lucide-react';
-import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
-import { socket } from '@/lib/socketServer';
+import MessagingContext, {
+  MessagingProvider,
+  useMessaging,
+  type Conversation,
+  type Message,
+  type ConversationMember,
+  type MessagingContextType,
+} from '@/context/MessagingContext';
 
-interface ConversationMember {
-  id: string;
-  userId: string;
-  user?: {
-    name?: string;
-    profileImage?: string;
-    email?: string;
-  };
-}
+export type { Conversation, Message, ConversationMember, MessagingContextType };
+export { MessagingProvider, useMessaging };
 
-interface Conversation {
-  id: string;
-  type: string;
-  jobId?: string | null;
-  customerId?: string | null;
-  workerId?: string | null;
-  updatedAt: string;
-  members: ConversationMember[];
-}
-
-interface Message {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  message: string;
-  createdAt: string;
-  sender?: {
-    name?: string;
-    profileImage?: string;
-  };
-}
-
-export default function MessagesContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialConvId = searchParams.get('conversationId');
-  const targetUserId = searchParams.get('userId');
-
-  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
-
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConvId, setActiveConvId] = useState<string | null>(initialConvId);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [loadingConvs, setLoadingConvs] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [sending, setSending] = useState(false);
+function MessagesView() {
+  const {
+    conversations,
+    activeConvId,
+    activeConv,
+    messages,
+    newMessage,
+    loadingConvs,
+    loadingMessages,
+    sending,
+    isOtherUserTyping,
+    activeTypingText,
+    session,
+    setActiveConvId,
+    handleInputChange,
+    sendMessage,
+    getPartner,
+    getTypingText,
+  } = useMessaging();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom of messages
-  // const scrollToBottom = () => {
-  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  // };
-
-  // useEffect(() => {
-  //   scrollToBottom();
-  // }, [messages]);
-
-  // Load user conversations
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.push('/login?redirect=/messages');
-      return;
-    }
-
-    async function loadConversations() {
-      setLoadingConvs(true);
-      try {
-        // If targetUserId query is provided, create or get conversation first
-        if (targetUserId) {
-          const initRes = await fetch('/api/conversations', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ targetUserId }),
-          });
-          if (initRes.ok) {
-            const initData = await initRes.json();
-            const cId = initData.conversationId || initData.data?.conversationId;
-            if (cId) setActiveConvId(cId);
-          }
-        }
-
-        const res = await fetch('/api/conversations', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const convList: Conversation[] = data.conversations || data.data?.conversations || [];
-          setConversations(convList);
-          if (!activeConvId && convList.length > 0) {
-            setActiveConvId(convList[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load conversations:', err);
-      } finally {
-        setLoadingConvs(false);
-      }
-    }
-
-    loadConversations();
-  }, [targetUserId, router]);
-
-  // Initialize socket connection
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-
-    if (!socket.connected) {
-      socket.auth = { token };
-      socket.connect();
-    }
-  }, []);
-
-  // Join/leave active conversation room
-  useEffect(() => {
-    if (!activeConvId) return;
-    socket.emit('conversation:join', activeConvId);
-
-    return () => {
-      socket.emit('conversation:leave', activeConvId);
-    };
-  }, [activeConvId]);
-
-  // Listen for real-time socket messages without fetching GET again
-  useEffect(() => {
-    const handleNewMessage = (msg: Message) => {
-      if (msg.conversationId === activeConvId) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
-      }
-
-      // Update conversation list preview & timestamp without calling GET
-      setConversations((prev) =>
-        prev
-          .map((c) =>
-            c.id === msg.conversationId
-              ? { ...c, updatedAt: msg.createdAt }
-              : c
-          )
-          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      );
-    };
-
-    const handleConvUpdated = (data: { conversationId: string; lastMessage: string; updatedAt: string }) => {
-      setConversations((prev) =>
-        prev
-          .map((c) =>
-            c.id === data.conversationId
-              ? { ...c, updatedAt: data.updatedAt }
-              : c
-          )
-          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      );
-    };
-
-    const handleSocketError = (err: { error?: string; message?: string }) => {
-      console.error('[Socket Error]', err?.error || err?.message);
-      setSending(false);
-    };
-
-    socket.on('message:new', handleNewMessage);
-    socket.on('conversation:updated', handleConvUpdated);
-    socket.on('message:error', handleSocketError);
-
-    return () => {
-      socket.off('message:new', handleNewMessage);
-      socket.off('conversation:updated', handleConvUpdated);
-      socket.off('message:error', handleSocketError);
-    };
-  }, [activeConvId]);
-
-  // Load messages only once when active conversation changes (no polling)
-  useEffect(() => {
-    if (!activeConvId) return;
-    const token = getToken();
-    if (!token) return;
-
-    let isMounted = true;
-
-    async function loadMessages() {
-      setLoadingMessages(true);
-      try {
-        const res = await fetch(`/api/conversations/${activeConvId}/messages`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok && isMounted) {
-          const data = await res.json();
-          setMessages(data.messages || data.data?.messages || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch messages:', err);
-      } finally {
-        if (isMounted) setLoadingMessages(false);
-      }
-    }
-
-    loadMessages();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [activeConvId]);
-
-  // Send message through socket (no HTTP POST, no repeated GET)
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !activeConvId) return;
-
-    const token = getToken();
-    if (!token) return;
-
-    const outgoingText = newMessage.trim();
-    setSending(true);
-    setNewMessage('');
-
-    socket.emit('message:send', {
-      conversationId: activeConvId,
-      message: outgoingText,
-      token,
-    });
-
-    setTimeout(() => {
-      setSending(false);
-    }, 300);
-  };
-
-  const activeConv = conversations.find((c) => c.id === activeConvId);
-
-  // Helper to extract display partner in 1-on-1 chats
-  const getPartner = (conv: Conversation) => {
-    const otherMember = conv.members?.find((m) => m.userId !== session?.id);
-    return otherMember?.user?.name || otherMember?.user?.email || 'Conversation Partner';
-  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-[calc(100vh-6rem)]">
@@ -288,6 +77,7 @@ export default function MessagesContent() {
               conversations.map((conv) => {
                 const isActive = conv.id === activeConvId;
                 const partnerName = getPartner(conv);
+                const typingInfo = getTypingText(conv);
 
                 return (
                   <button
@@ -311,9 +101,16 @@ export default function MessagesContent() {
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-[#64748b] truncate mt-0.5">
-                        {conv.type === 'JOB_GROUP' ? 'Job Team Discussion' : 'Direct Conversation'}
-                      </p>
+                      {typingInfo ? (
+                        <p className="text-[11px] text-[#0051d5] font-semibold truncate mt-0.5 flex items-center gap-1.5 animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0051d5]" />
+                          <span>{typingInfo}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-[#64748b] truncate mt-0.5">
+                          {conv.type === 'JOB_GROUP' ? 'Job Team Discussion' : 'Direct Conversation'}
+                        </p>
+                      )}
                     </div>
                   </button>
                 );
@@ -336,10 +133,17 @@ export default function MessagesContent() {
                     <h3 className="text-sm font-bold text-[#091426]">
                       {getPartner(activeConv)}
                     </h3>
-                    <div className="flex items-center gap-1 text-[11px] text-[#0d9488] font-medium">
-                      <ShieldCheck className="w-3 h-3" />
-                      <span>Verified User • Direct Chat</span>
-                    </div>
+                    {isOtherUserTyping ? (
+                      <div className="flex items-center gap-1.5 text-[11px] text-[#0051d5] font-semibold animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0051d5] animate-ping" />
+                        <span>typing a message...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-[11px] text-[#0d9488] font-medium">
+                        <ShieldCheck className="w-3 h-3" />
+                        <span>Verified User • Direct Chat</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -355,7 +159,7 @@ export default function MessagesContent() {
               </div>
 
               {/* Messages Stream */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 relative">
                 {loadingMessages && messages.length === 0 ? (
                   <div className="p-8 text-center text-xs text-[#64748b]">Loading messages...</div>
                 ) : messages.length === 0 ? (
@@ -391,6 +195,35 @@ export default function MessagesContent() {
                     );
                   })
                 )}
+
+                {/* Real-Time Typing Indicator Bubble */}
+                {isOtherUserTyping && (
+                  <div className="flex items-end gap-2 text-left transition-opacity duration-200 absolute bottom-0">
+                    <div className="w-7 h-7 rounded-lg bg-[#0051d5] text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
+                      {getPartner(activeConv)[0] || 'U'}
+                    </div>
+                    <div className="bg-white border border-[#e2e8f0] px-3.5 py-2.5 rounded-2xl rounded-bl-none shadow-xs flex items-center gap-2">
+                      <div className="flex items-center gap-1 py-1">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-[#0051d5] animate-bounce"
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-[#0051d5] animate-bounce"
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-[#0051d5] animate-bounce"
+                          style={{ animationDelay: '300ms' }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-[#64748b] font-medium">
+                        {activeTypingText || 'Typing...'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
 
@@ -401,7 +234,7 @@ export default function MessagesContent() {
                     type="text"
                     placeholder="Type your message here..."
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     className="flex-1 px-4 py-2.5 text-xs sm:text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0051d5] text-[#091426]"
                   />
                   <button
@@ -432,3 +265,16 @@ export default function MessagesContent() {
   );
 }
 
+export default function MessagesContent() {
+  const context = useContext(MessagingContext);
+
+  if (context) {
+    return <MessagesView />;
+  }
+
+  return (
+    <MessagingProvider>
+      <MessagesView />
+    </MessagingProvider>
+  );
+}

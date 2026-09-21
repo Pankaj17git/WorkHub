@@ -212,6 +212,13 @@ export const initSocketServer = (io: Server) => {
           // Broadcast message to room members
           io.to(`conversation:${convStr}`).to(convStr).emit("message:new", formattedMessage);
 
+          // Clear any active typing status for this sender in the conversation
+          socket.to(`conversation:${convStr}`).to(convStr).emit("typing:update", {
+            conversationId: convStr,
+            userId: uid.toString(),
+            typing: false,
+          });
+
           // Notify conversation members for live conversation list updates
           const members = await prisma.conversationMember.findMany({
             where: { conversationId: convIdBigInt },
@@ -235,25 +242,47 @@ export const initSocketServer = (io: Server) => {
     );
 
     // Typing indicators
-    socket.on("typing:start", ({ conversationId }: { conversationId: string | number }) => {
-      if (!conversationId) return;
-      const convStr = conversationId.toString();
-      const uid = resolveUserId(socket);
-      socket.to(`conversation:${convStr}`).to(convStr).emit("typing:update", {
-        userId: uid,
-        typing: true,
-      });
-    });
+    socket.on(
+      "typing:start",
+      (data: {
+        conversationId?: string | number;
+        userId?: string;
+        userName?: string;
+      }) => {
+        if (!data?.conversationId) return;
+        const convStr = data.conversationId.toString();
+        const uid = resolveUserId(socket) || data.userId;
+        if (!uid) return;
 
-    socket.on("typing:stop", ({ conversationId }: { conversationId: string | number }) => {
-      if (!conversationId) return;
-      const convStr = conversationId.toString();
-      const uid = resolveUserId(socket);
-      socket.to(`conversation:${convStr}`).to(convStr).emit("typing:update", {
-        userId: uid,
-        typing: false,
-      });
-    });
+        socket.to(`conversation:${convStr}`).to(convStr).emit("typing:update", {
+          conversationId: convStr,
+          userId: uid.toString(),
+          userName: data.userName,
+          typing: true,
+        });
+        console.log(`[Socket] User ${uid} started typing in conversation ${convStr}`);
+      }
+    );
+
+    socket.on(
+      "typing:stop",
+      (data: {
+        conversationId?: string | number;
+        userId?: string;
+      }) => {
+        if (!data?.conversationId) return;
+        const convStr = data.conversationId.toString();
+        const uid = resolveUserId(socket) || data.userId;
+        if (!uid) return;
+
+        socket.to(`conversation:${convStr}`).to(convStr).emit("typing:update", {
+          conversationId: convStr,
+          userId: uid.toString(),
+          typing: false,
+        });
+        console.log(`[Socket] User ${uid} stopped typing in conversation ${convStr}`);
+      }
+    );
 
     socket.on("disconnect", () => {
       const uid = (socket as any).userId;
