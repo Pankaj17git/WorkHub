@@ -1,151 +1,426 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
+  Home,
   Search,
-  MapPin,
-  ShieldCheck,
+  Briefcase,
+  MessageSquare,
+  Bell,
+  Plus,
   ChevronDown,
   Menu,
   X,
   User,
   LogOut,
-  Briefcase,
-  Sparkles
+  Calendar,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
-import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { clearSession, getSessionSnapshot, subscribeToSession, getToken } from '@/lib/auth-client';
+import api from '@/lib/api';
+import WorkHubLogo from '@/components/ui/WorkHubLogo';
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedCity, setSelectedCity] = useState('Chandigarh');
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const profileRef = useRef<HTMLDivElement>(null);
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
-  /* Full Standard Marketplace Header */
+  const isCustomer = session?.role === 'CUSTOMER';
+  const isWorker = session?.role === 'WORKER';
+
+  // Fetch unread notifications for logged-in user
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setUnreadCount(0);
+      return;
+    }
+
+    api.get('/api/notifications?unread=true')
+      .then((res) => {
+        if (res.data?.notifications) {
+          setUnreadCount(res.data.notifications.length);
+        }
+      })
+      .catch(() => {});
+  }, [session]);
+
+  // Close dropdowns on route changes
+  useEffect(() => {
+    setProfileDropdownOpen(false);
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Click-outside listener for profile dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    }
+
+    if (profileDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [profileDropdownOpen]);
+
+  // Role-based search submission
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    if (isWorker) {
+      // Workers search for available jobs
+      router.push(`/jobs?q=${encodeURIComponent(query)}`);
+    } else if (isCustomer) {
+      // Customers search for workers / pros
+      router.push(`/search?mode=workers&q=${encodeURIComponent(query)}`);
+    } else {
+      // Guests search workers / services
+      router.push(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
+  // Search input placeholder based on role
+  const searchPlaceholder = isWorker
+    ? 'Search jobs (wiring, plumbing, repairs)...'
+    : isCustomer
+    ? 'Search workers (electrician, carpenter, AC)...'
+    : 'Search workers or services...';
+
+  // Helper to determine active tab style
+  const homeHref = isCustomer ? '/dashboard' : isWorker ? '/worker/dashboard' : '/';
+  const isHomeOrDashboardActive = pathname === '/' || pathname === '/dashboard';
+  const isFindWorkersActive =
+    pathname === '/search' && searchParams?.get('mode') !== 'jobs';
+  const isFindJobsActive =
+    pathname.startsWith('/jobs') && pathname !== '/jobs/new' ||
+    (pathname === '/search' && searchParams?.get('mode') === 'jobs');
+  const isMessagesActive = pathname.startsWith('/messages');
+  const isNotificationsActive = pathname.startsWith('/notifications');
+
   return (
-    <header className="sticky top-0 z-50 bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e2e8f0]">
-      {/* Top micro alert banner */}
-      <div className="bg-[#091426] text-[#ffffff] px-4 py-1.5 text-xs text-center font-medium flex items-center justify-center gap-2">
-        <ShieldCheck className="w-3.5 h-3.5 text-[#0d9488]" />
-        <span>100% Background-Checked Professionals & Up to ₹10,000 Damage Cover</span>
-        <span className="hidden md:inline-block text-[#94a3b8]">|</span>
-        <span className="hidden md:inline-block text-[#38bdf8]">Use code WORKHUB100 for ₹100 off your first booking</span>
-      </div>
-
-      {/* Main Navbar */}
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18 gap-4">
+        <div className="flex items-center justify-between h-20 gap-4">
           
-          {/* Logo & City Selector */}
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#091426] to-[#0051d5] flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform">
-                W<span className="text-[#38bdf8]">H</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold tracking-tight text-[#091426] leading-none">
-                  Work<span className="text-[#0051d5]">Hub</span>
-                </span>
-                <span className="text-[10px] uppercase font-semibold text-[#64748b] tracking-wider font-geist mt-0.5">
-                  Verified Local Pros
-                </span>
-              </div>
-            </Link>
-
-            {/* City selector dropdown */}
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f1f5f9] border border-[#e2e8f0] text-sm text-[#0d1c2e] hover:bg-[#e2e8f0] cursor-pointer transition-colors">
-              <MapPin className="w-4 h-4 text-[#0051d5]" />
-              <span className="font-medium">{selectedCity}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-[#64748b]" />
+          {/* 1. Left: Brand Logo & Tagline */}
+          <Link href={homeHref} className="flex items-center gap-3 group shrink-0">
+            <WorkHubLogo size={34} />
+            <div className="flex flex-col">
+              <span className="text-xl font-extrabold tracking-tight text-[#0f172a] leading-none group-hover:text-[#0066f5] transition-colors">
+                Work<span className="text-[#0066f5]">Hub</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium tracking-wide mt-0.5">
+                Skilled People, Real Work.
+              </span>
             </div>
-          </div>
+          </Link>
 
-          {/* Quick Search in Nav */}
-          <div className="hidden md:flex flex-1 max-w-md mx-4">
-            <form action="/search" method="GET" className="relative w-full">
-              <input
-                type="text"
-                name="q"
-                placeholder="Search electrician, plumber, AC service..."
-                className="w-full pl-10 pr-4 py-2 text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-lg focus:outline-none focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5]/15 transition-all text-[#0d1c2e] placeholder:text-[#94a3b8]"
-              />
-              <Search className="w-4 h-4 text-[#64748b] absolute left-3.5 top-1/2 -translate-y-1/2" />
-            </form>
-          </div>
-
-          {/* Nav Actions */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* 2. Center: Navigation Items with Icons & Active Indicator */}
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-8 h-full">
+            {/* Home / Dashboard */}
             <Link
-              href="/search"
-              className="px-3.5 py-2 text-sm font-medium text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+              href={homeHref}
+              className={`flex items-center gap-2 text-sm font-semibold h-full border-b-2 transition-colors px-1 ${
+                isHomeOrDashboardActive
+                  ? 'text-[#0066f5] border-[#0066f5]'
+                  : 'text-slate-600 hover:text-[#0066f5] border-transparent'
+              }`}
             >
-              Explore Services
-            </Link>
-            
-            <Link
-              href="/bookings/pro-1/track"
-              className="px-3.5 py-2 text-sm font-medium text-[#475569] hover:text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
-            >
-              Track Job
+              <Home className="w-4 h-4" />
+              <span>{isCustomer ? 'Dashboard' : 'Home'}</span>
             </Link>
 
-            {/* Role-aware CTA: Become a Worker or Worker Dashboard */}
-            {session?.role === 'WORKER' ? (
+            {/* Find Workers (Only Customer & Guest) */}
+            {(!session || isCustomer) && (
               <Link
-                href="/worker/dashboard"
-                className="px-3.5 py-2 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
-                title="Go to your pro partner dashboard"
+                href="/search?mode=workers"
+                className={`flex items-center gap-2 text-sm font-semibold h-full border-b-2 transition-colors px-1 ${
+                  isFindWorkersActive
+                    ? 'text-[#0066f5] border-[#0066f5]'
+                    : 'text-slate-600 hover:text-[#0066f5] border-transparent'
+                }`}
               >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Worker Dashboard</span>
-              </Link>
-            ) : (
-              <Link
-                href="/signup?role=WORKER"
-                className="px-3.5 py-2 text-xs font-bold text-[#0d9488] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#a7f3d0] rounded-xl transition-all flex items-center gap-1.5 shadow-xs group"
-                title="Register as a worker and start earning"
-              >
-                <Briefcase className="w-3.5 h-3.5 text-[#0d9488] group-hover:scale-110 transition-transform" />
-                <span>Become a Worker</span>
+                <Search className="w-4 h-4" />
+                <span>Find Workers</span>
               </Link>
             )}
 
-            {/* Login / Account Buttons */}
+            {/* Find Jobs (Only Worker & Guest) */}
+            {(!session || isWorker) && (
+              <Link
+                href="/jobs"
+                className={`flex items-center gap-2 text-sm font-semibold h-full border-b-2 transition-colors px-1 ${
+                  isFindJobsActive
+                    ? 'text-[#0066f5] border-[#0066f5]'
+                    : 'text-slate-600 hover:text-[#0066f5] border-transparent'
+                }`}
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>Find Jobs</span>
+              </Link>
+            )}
+
+            {/* Messages (Authenticated only) */}
+            {session && (
+              <Link
+                href="/messages"
+                className={`flex items-center gap-2 text-sm font-semibold h-full border-b-2 transition-colors px-1 ${
+                  isMessagesActive
+                    ? 'text-[#0066f5] border-[#0066f5]'
+                    : 'text-slate-600 hover:text-[#0066f5] border-transparent'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Messages</span>
+              </Link>
+            )}
+
+            {/* Notifications (Authenticated only) */}
+            {session && (
+              <Link
+                href="/notifications"
+                className={`flex items-center gap-2 text-sm font-semibold h-full border-b-2 transition-colors px-1 relative ${
+                  isNotificationsActive
+                    ? 'text-[#0066f5] border-[#0066f5]'
+                    : 'text-slate-600 hover:text-[#0066f5] border-transparent'
+                }`}
+              >
+                <Bell className="w-4 h-4" />
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
+          </nav>
+
+          {/* 3. Role-Aware Search Box (Shown to both roles + guests) */}
+          {/* <div className="hidden md:flex items-center flex-1 max-w-xs xl:max-w-sm">
+            <form onSubmit={handleSearch} className="relative w-full">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#0066f5] focus:bg-white focus:ring-2 focus:ring-[#0066f5]/15 transition-all text-slate-800 placeholder:text-slate-400 font-medium"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </form>
+          </div> */}
+
+          {/* 4. Right Actions: Post Job, Profile Chip or Login/Sign Up */}
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            
+            {/* Post Job Option (Customer or Unregistered Guest) */}
+            {isCustomer && (
+              <Link
+                href="/jobs/new"
+                className="px-3.5 py-2 text-xs font-semibold text-white bg-[#0066f5] hover:bg-blue-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Post a Job</span>
+              </Link>
+            )}
+
+            {!session && (
+              <Link
+                href="/login?redirect=/jobs/new"
+                className="px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-[#0066f5] bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-xl transition-all flex items-center gap-1.5"
+                title="Post a job (sign in required)"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#0066f5]" />
+                <span>Post a Job</span>
+              </Link>
+            )}
+
+            {/* Authenticated User Profile Chip with Dropdown */}
             {session ? (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#091426] bg-[#f1f5f9] rounded-xl border border-[#e2e8f0]">
-                  <User className="w-3.5 h-3.5 text-[#0051d5]" />
-                  <span className="max-w-28 truncate">{session.name || session.email}</span>
-                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
-                    session.role === 'WORKER'
-                      ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
-                      : 'bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe]'
-                  }`}>
-                    {session.role === 'WORKER' ? 'Pro' : 'Customer'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => { clearSession(); router.push('/login'); }}
-                  className="p-2 text-xs font-semibold text-[#64748b] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer"
-                  title="Log out"
+                {/* Standalone Bell with notification badge */}
+                <Link
+                  href="/notifications"
+                  className="p-2 text-slate-500 hover:text-[#0066f5] hover:bg-slate-50 rounded-xl transition-colors relative"
+                  title="Notifications"
                 >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+                  )}
+                </Link>
+
+                {/* Profile Pill & Dropdown */}
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setProfileDropdownOpen((prev) => !prev)}
+                    className="flex items-center gap-2.5 p-1 pl-1.5 pr-2.5 rounded-xl hover:bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all cursor-pointer focus:outline-none"
+                    aria-expanded={profileDropdownOpen}
+                  >
+                    {/* User Avatar */}
+                    {session.profileImage ? (
+                      <img
+                        src={session.profileImage}
+                        alt={session.name || 'User'}
+                        className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#0066f5] to-blue-400 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                        {(session.name || session.email || 'U')[0].toUpperCase()}
+                      </div>
+                    )}
+
+                    {/* Name & Role Subtitle */}
+                    <div className="flex flex-col text-left leading-tight">
+                      <span className="text-xs font-bold text-slate-800 max-w-[110px] truncate">
+                        {session.name || session.email}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium capitalize">
+                        {isWorker ? 'Worker' : 'Customer'}
+                      </span>
+                    </div>
+
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                        profileDropdownOpen ? 'rotate-180 text-[#0066f5]' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {profileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                      {/* User Info Header */}
+                      <div className="px-4 py-3 border-b border-slate-100">
+                        <div className="font-bold text-sm text-slate-900 truncate">
+                          {session.name || 'WorkHub Member'}
+                        </div>
+                        <div className="text-xs text-slate-500 truncate">{session.email}</div>
+                        <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-[#0066f5] border border-blue-100">
+                          <Sparkles className="w-3 h-3" />
+                          {isWorker ? 'Verified Worker' : 'Customer Account'}
+                        </div>
+                      </div>
+
+                      {/* Menu Links */}
+                      <div className="py-1">
+                        {isCustomer && (
+                          <Link
+                            href="/dashboard"
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#0066f5] hover:bg-blue-50 transition-colors"
+                          >
+                            <Home className="w-4 h-4 text-[#0066f5]" />
+                            <span>Customer Dashboard</span>
+                          </Link>
+                        )}
+
+                        <Link
+                          href="/profile"
+                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0066f5] transition-colors"
+                        >
+                          <User className="w-4 h-4 text-slate-400" />
+                          <span>My Profile & Settings</span>
+                        </Link>
+
+                        {isCustomer && (
+                          <>
+                            <Link
+                              href="/jobs/my-jobs"
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0066f5] transition-colors"
+                            >
+                              <Layers className="w-4 h-4 text-slate-400" />
+                              <span>My Posted Jobs</span>
+                            </Link>
+                            <Link
+                              href="/bookings"
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0066f5] transition-colors"
+                            >
+                              <Calendar className="w-4 h-4 text-slate-400" />
+                              <span>My Bookings</span>
+                            </Link>
+                          </>
+                        )}
+
+                        {isWorker && (
+                          <Link
+                            href="/worker/dashboard"
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-[#0d9488] hover:bg-emerald-50 transition-colors"
+                          >
+                            <Briefcase className="w-4 h-4 text-[#0d9488]" />
+                            <span>Worker Dashboard</span>
+                          </Link>
+                        )}
+
+                        <Link
+                          href="/messages"
+                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0066f5] transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4 text-slate-400" />
+                          <span>Messages</span>
+                        </Link>
+
+                        <Link
+                          href="/notifications"
+                          className="flex items-center justify-between px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0066f5] transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Bell className="w-4 h-4 text-slate-400" />
+                            <span>Notifications</span>
+                          </div>
+                          {unreadCount > 0 && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">
+                              {unreadCount}
+                            </span>
+                          )}
+                        </Link>
+                      </div>
+
+                      {/* Logout Button */}
+                      <div className="border-t border-slate-100 pt-1 mt-1">
+                        <button
+                          onClick={() => {
+                            clearSession();
+                            router.push('/login');
+                          }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Log Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
+              /* Unauthenticated: Login & Sign Up */
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="px-3.5 py-2 text-sm font-semibold text-[#091426] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-[#0066f5] hover:bg-slate-50 rounded-xl transition-colors border border-slate-200"
                 >
-                  Log In
+                  Login
                 </Link>
-
                 <Link
                   href="/signup"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-[#0051d5] hover:bg-[#0042b0] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#0066f5] hover:bg-blue-700 rounded-xl shadow-xs transition-all"
                 >
                   Sign Up
                 </Link>
@@ -153,44 +428,23 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile hamburger */}
-          <div className="flex md:hidden items-center gap-2">
-            {session?.role === 'WORKER' ? (
+          {/* 5. Mobile Hamburger Menu Button */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {session && (
               <Link
-                href="/worker/dashboard"
-                className="px-2.5 py-1 text-xs font-bold bg-[#0d9488] text-white rounded-lg flex items-center gap-1"
+                href="/notifications"
+                className="p-2 text-slate-500 relative"
+                aria-label="Notifications"
               >
-                <Briefcase className="w-3 h-3" />
-                <span>Dashboard</span>
-              </Link>
-            ) : (
-              <Link
-                href="/signup?role=WORKER"
-                className="px-2.5 py-1 text-xs font-bold bg-[#f0fdfa] text-[#0d9488] border border-[#a7f3d0] rounded-lg flex items-center gap-1"
-              >
-                <Briefcase className="w-3 h-3" />
-                <span>Join as Pro</span>
-              </Link>
-            )}
-
-            {session ? (
-              <button
-                onClick={() => { clearSession(); router.push('/login'); }}
-                className="px-2.5 py-1 text-xs font-bold text-[#64748b] hover:text-red-600 bg-[#f1f5f9] rounded-lg flex items-center gap-1 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <Link
-                href="/login"
-                className="px-3 py-1 text-xs font-bold text-[#0051d5] bg-[#eff6ff] rounded-lg"
-              >
-                Log In
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+                )}
               </Link>
             )}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-[#0d1c2e] hover:bg-[#f1f5f9] cursor-pointer"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -198,93 +452,189 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile menu dropdown */}
+        {/* 6. Mobile Dropdown Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-[#e2e8f0] space-y-3">
-            <form action="/search" method="GET" className="relative w-full">
+          <div className="lg:hidden py-4 border-t border-slate-100 space-y-3">
+            {/* Search Input for Mobile */}
+            <form onSubmit={handleSearch} className="relative w-full">
               <input
                 type="text"
-                name="q"
-                placeholder="Search electrician, plumber, carpenter..."
-                className="w-full pl-10 pr-4 py-2.5 text-sm bg-[#f8f9ff] border border-[#e2e8f0] rounded-lg focus:outline-none focus:border-[#0051d5]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#0066f5]"
               />
-              <Search className="w-4 h-4 text-[#64748b] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </form>
-            <div className="flex flex-col gap-2 pt-2">
+
+            <div className="flex flex-col gap-1 pt-2">
               <Link
-                href="/search"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 text-sm font-medium text-[#0d1c2e] hover:bg-[#f1f5f9] rounded-lg"
+                href={homeHref}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                  isHomeOrDashboardActive ? 'text-[#0066f5] bg-blue-50/70' : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
-                All Services
-              </Link>
-              <Link
-                href="/bookings/pro-1/track"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 text-sm font-medium text-[#0d1c2e] hover:bg-[#f1f5f9] rounded-lg"
-              >
-                Track Live Booking
+                <Home className="w-4 h-4" />
+                <span>{isCustomer ? 'Dashboard' : 'Home'}</span>
               </Link>
 
-              {/* Become a Worker / Worker Dashboard Mobile Button */}
-              {session?.role === 'WORKER' ? (
+              {(!session || isCustomer) && (
+                <Link
+                  href="/search?mode=workers"
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                    isFindWorkersActive
+                      ? 'text-[#0066f5] bg-blue-50/70'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Find Workers</span>
+                </Link>
+              )}
+
+              {(!session || isWorker) && (
+                <Link
+                  href="/jobs"
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                    isFindJobsActive
+                      ? 'text-[#0066f5] bg-blue-50/70'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>Find Jobs</span>
+                </Link>
+              )}
+
+              {/* Post a Job for Customer or Unregistered */}
+              {isCustomer && (
+                <Link
+                  href="/jobs/new"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-[#0066f5] bg-blue-50 hover:bg-blue-100/70 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Post a Job</span>
+                </Link>
+              )}
+
+              {!session && (
+                <Link
+                  href="/login?redirect=/jobs/new"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-[#0066f5] bg-blue-50 hover:bg-blue-100/70 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Post a Job</span>
+                </Link>
+              )}
+
+              {session && (
+                <>
+                  <Link
+                    href="/messages"
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                      isMessagesActive
+                        ? 'text-[#0066f5] bg-blue-50/70'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Messages</span>
+                  </Link>
+
+                  <Link
+                    href="/notifications"
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                      isNotificationsActive
+                        ? 'text-[#0066f5] bg-blue-50/70'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Bell className="w-4 h-4" />
+                      <span>Notifications</span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                </>
+              )}
+
+              {isWorker && (
                 <Link
                   href="/worker/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#f0fdfa] border border-[#a7f3d0] text-xs font-bold text-[#0d9488]"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-bold mt-1"
                 >
                   <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-[#0d9488]" />
+                    <Briefcase className="w-4 h-4" />
                     <span>Worker Dashboard</span>
-                  </div>
-                  <Sparkles className="w-3.5 h-3.5" />
-                </Link>
-              ) : (
-                <Link
-                  href="/signup?role=WORKER"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#f0fdfa] border border-[#a7f3d0] text-xs font-bold text-[#0d9488]"
-                >
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-[#0d9488]" />
-                    <span>Become a Worker (Earn ₹)</span>
                   </div>
                   <Sparkles className="w-3.5 h-3.5" />
                 </Link>
               )}
 
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f1f5f9]">
+              {/* Mobile Auth footer */}
+              <div className="pt-3 border-t border-slate-100 flex flex-col gap-2 mt-2">
                 {session ? (
-                  <div className="col-span-2 flex items-center justify-between px-3 py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-[#0051d5]" />
-                      <span className="truncate">{session.name || session.email}</span>
-                    </div>
-                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
-                      session.role === 'WORKER'
-                        ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
-                        : 'bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe]'
-                    }`}>
-                      {session.role === 'WORKER' ? 'Pro' : 'Customer'}
-                    </span>
-                  </div>
-                ) : (
                   <>
+                    <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-xl">
+                      {session.profileImage ? (
+                        <img
+                          src={session.profileImage}
+                          alt={session.name || 'User'}
+                          className="w-9 h-9 rounded-full object-cover ring-1 ring-slate-200"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-[#0066f5] text-white flex items-center justify-center font-bold text-xs">
+                          {(session.name || session.email || 'U')[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-800">
+                          {session.name || session.email}
+                        </span>
+                        <span className="text-[10px] text-slate-400 capitalize">
+                          {isWorker ? 'Worker' : 'Customer'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/profile"
+                      className="px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2"
+                    >
+                      <User className="w-4 h-4 text-slate-400" />
+                      <span>My Profile</span>
+                    </Link>
+
+                    <button
+                      onClick={() => {
+                        clearSession();
+                        router.push('/login');
+                      }}
+                      className="w-full py-2.5 text-xs font-bold text-red-600 bg-red-50 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Log Out</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
                     <Link
                       href="/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full text-center py-2.5 text-xs font-bold text-[#091426] bg-[#f1f5f9] rounded-xl hover:bg-[#e2e8f0] transition-colors"
+                      className="text-center py-2 text-xs font-semibold text-slate-700 border border-slate-200 rounded-xl"
                     >
-                      Log In
+                      Login
                     </Link>
                     <Link
                       href="/signup"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full text-center py-2.5 text-xs font-bold text-white bg-[#0051d5] rounded-xl hover:bg-[#0042b0] transition-colors"
+                      className="text-center py-2 text-xs font-bold text-white bg-[#0066f5] rounded-xl shadow-xs"
                     >
                       Sign Up
                     </Link>
-                  </>
+                  </div>
                 )}
               </div>
             </div>

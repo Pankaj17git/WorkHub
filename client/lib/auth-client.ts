@@ -8,6 +8,7 @@ export interface SessionUser {
   name?: string | null;
   phone?: string | null;
   role: string;
+  profileImage?: string | null;
 }
 
 const TOKEN_COOKIE = "wh_token";
@@ -35,6 +36,17 @@ export function saveSession(token: string, user: SessionUser) {
   cachedRaw = JSON.stringify(user);
   cachedUser = user;
   listeners.forEach((listener) => listener());
+}
+
+export function updateSessionUser(updates: Partial<SessionUser>) {
+  const current = getUser();
+  if (current) {
+    const updated: SessionUser = { ...current, ...updates };
+    setCookie(USER_COOKIE, JSON.stringify(updated));
+    cachedRaw = JSON.stringify(updated);
+    cachedUser = updated;
+    listeners.forEach((listener) => listener());
+  }
 }
 
 export function getToken(): string | null {
@@ -82,16 +94,16 @@ export function clearSession() {
 }
 
 export function dashboardPathForRole(role?: string | null): string {
-  return role === "WORKER" ? "/worker/dashboard" : "/";
+  return role === "WORKER" ? "/worker/dashboard" : "/dashboard";
 }
 
 /**
  * Where a brand-new account lands right after signup + email verification.
- * Workers go through skills onboarding first; customers go straight to the
- * marketplace.
+ * Workers go through skills onboarding first; customers go straight to their
+ * dashboard.
  */
 export function signupRedirectPath(role?: string | null): string {
-  return role === "WORKER" ? "/worker/onboarding/skills" : "/";
+  return role === "WORKER" ? "/worker/onboarding/skills" : "/dashboard";
 }
 
 /**

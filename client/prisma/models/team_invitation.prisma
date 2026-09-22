@@ -1,0 +1,30 @@
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+model TeamInvitation {
+  id              BigInt           @id @default(autoincrement())
+  jobId           BigInt           @map("job_id")
+  job             Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  inviterWorkerId BigInt           @map("inviter_worker_id")
+  inviterWorker   Worker           @relation("SentTeamInvitations", fields: [inviterWorkerId], references: [id], onDelete: Cascade)
+  invitedWorkerId BigInt           @map("invited_worker_id")
+  invitedWorker   Worker           @relation("ReceivedTeamInvitations", fields: [invitedWorkerId], references: [id], onDelete: Cascade)
+  assignmentId    BigInt?          @map("assignment_id")
+  assignment      Assignment?      @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+
+  status          InvitationStatus @default(PENDING)
+  expiresAt       DateTime         @map("expires_at") @db.Timestamp(6)
+
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@unique([jobId, invitedWorkerId])
+  @@index([jobId])
+  @@index([invitedWorkerId, status])
+  @@map("team_invitations")
+}

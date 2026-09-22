@@ -11,8 +11,8 @@ const addAddressSchema = z.object({
   city: z.string({ error: "City is required" }).min(1, "City is required"),
   state: z.string({ error: "State is required" }).min(1, "State is required"),
   country: z.string({ error: "Country is required" }).min(1, "Country is required"),
-  latitude: z.number({ error: "Latitude is required" }).min(1, "Latitude is required"),
-  longitude: z.number({ error: "Longitude is required" }).min(1, "Longitude is required"),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
 });
 
 export const addressController = {
@@ -22,7 +22,7 @@ export const addressController = {
    *   post:
    *     tags: [Address]
    *     summary: Add or update address
-   *     description: Creates an address record and connects it to the user profile.
+   *     description: Creates or updates an address record and connects it to the user profile.
    *     security:
    *       - BearerAuth: []
    *     requestBody:
@@ -73,50 +73,65 @@ export const addressController = {
         return apiResponse.notFound("User not found");
       }
 
-      // Create new address record
-      const newAddress = await addressService.createAddress({
-        address,
-        city,
-        state,
-        country,
-        latitude,
-        longitude,
-      })
+      const existingAddressId = user.customer?.addressId || user.worker?.addressId;
+      let addressRecord;
 
-      // Link address to user's profile (Customer or Worker)
-      if (user.customer) {
-        await prisma.customer.update({
-          where: { id: user.customer.id },
-          data: { addressId: newAddress.id },
-        });
-      } else if (user.worker) {
-        await prisma.worker.update({
-          where: { id: user.worker.id },
-          data: { addressId: newAddress.id },
+      if (existingAddressId) {
+        // Update existing address
+        addressRecord = await addressService.updateAddress(existingAddressId.toString(), {
+          address,
+          city,
+          state,
+          country,
+          latitude: latitude ?? 0,
+          longitude: longitude ?? 0,
         });
       } else {
-        // Create default customer profile linked to this address
-        await prisma.customer.create({
-          data: {
-            userId: userIdBigInt,
-            addressId: newAddress.id,
-          },
+        // Create new address record
+        addressRecord = await addressService.createAddress({
+          address,
+          city,
+          state,
+          country,
+          latitude: latitude ?? 0,
+          longitude: longitude ?? 0,
         });
+
+        // Link address to user's profile (Customer or Worker)
+        if (user.customer) {
+          await prisma.customer.update({
+            where: { id: user.customer.id },
+            data: { addressId: addressRecord.id },
+          });
+        } else if (user.worker) {
+          await prisma.worker.update({
+            where: { id: user.worker.id },
+            data: { addressId: addressRecord.id },
+          });
+        } else {
+          // Create default customer profile linked to this address
+          await prisma.customer.create({
+            data: {
+              userId: userIdBigInt,
+              addressId: addressRecord.id,
+            },
+          });
+        }
       }
 
       const formattedAddress = {
-        id: newAddress.id.toString(),
-        address: newAddress.address,
-        city: newAddress.city,
-        state: newAddress.state,
-        country: newAddress.country,
-        latitude: newAddress.latitude ? Number(newAddress.latitude) : null,
-        longitude: newAddress.longitude ? Number(newAddress.longitude) : null,
-        createdAt: newAddress.createdAt,
-        updatedAt: newAddress.updatedAt,
+        id: addressRecord.id.toString(),
+        address: addressRecord.address,
+        city: addressRecord.city,
+        state: addressRecord.state,
+        country: addressRecord.country,
+        latitude: addressRecord.latitude ? Number(addressRecord.latitude) : null,
+        longitude: addressRecord.longitude ? Number(addressRecord.longitude) : null,
+        createdAt: addressRecord.createdAt,
+        updatedAt: addressRecord.updatedAt,
       };
 
-      return apiResponse.success({ address: formattedAddress }, Status.CREATED, "Address added successfully");
+      return apiResponse.success({ address: formattedAddress }, Status.CREATED, "Address saved successfully");
     } catch (error: unknown) {
       console.error("Error adding address:", error);
        return apiResponse.internalError("Failed to add address");

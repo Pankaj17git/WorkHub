@@ -52,6 +52,9 @@ export async function createOtp({ userId, expiresInMinutes = 10, length = 6, tx 
     },
   });
 
+  console.log("OTP created:", otpRecord);
+  console.log("Plain OTP:", plainOtp);
+
   return {
     otpRecord,
     plainOtp, // To be sent via SMS / Email or Firebase

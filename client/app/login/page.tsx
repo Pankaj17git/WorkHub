@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -14,6 +14,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { saveSession, resolveLoginRedirect } from '@/lib/auth-client';
+import api, { getApiErrorMessage } from '@/lib/api';
 
 function LoginFormContent() {
   const router = useRouter();
@@ -22,19 +23,19 @@ function LoginFormContent() {
   const redirectUrl = searchParams.get('redirect');
   const errorCode = searchParams.get('error');
 
-  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>('CUSTOMER');
+  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>(() => (urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'));
+  const [prevUrlRole, setPrevUrlRole] = useState(urlRole);
+  if (urlRole !== prevUrlRole) {
+    setPrevUrlRole(urlRole);
+    if (urlRole === 'WORKER' || urlRole === 'CUSTOMER') {
+      setRole(urlRole);
+    }
+  }
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (urlRole === 'WORKER') {
-      setRole('WORKER');
-    } else if (urlRole === 'CUSTOMER') {
-      setRole('CUSTOMER');
-    }
-  }, [urlRole]);
 
   let initialNotice: string | null = null;
   if (errorCode === 'unauthorized_worker_access') {
@@ -51,26 +52,13 @@ function LoginFormContent() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Login failed. Please check your credentials.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const { token, user } = data;
+      const res = await api.post('/api/auth/login', { email, password });
+      const { token, user } = res.data;
       saveSession(token, user);
 
       router.push(resolveLoginRedirect(user.role, redirectUrl));
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'));
       setIsSubmitting(false);
     }
   };
@@ -158,7 +146,7 @@ function LoginFormContent() {
             </div>
             <div>
               <strong className="text-sm font-bold text-[#091426] block">
-                Pro Partner Sign In
+                Worker Sign In
               </strong>
               <span className="text-[11px] text-[#64748b] leading-tight block mt-0.5">
                 Access job requests, wallet & earnings
@@ -186,7 +174,7 @@ function LoginFormContent() {
               {role === 'WORKER' ? (
                 <>
                   <Briefcase className="w-3.5 h-3.5" />
-                  <span>Professional Partner Login</span>
+                  <span>Worker Login</span>
                 </>
               ) : (
                 <>

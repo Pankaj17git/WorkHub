@@ -25,7 +25,14 @@ export const swaggerDefinition: SwaggerDefinition = {
     { name: "OTP", description: "OTP generation & verification (email/phone)" },
     { name: "User", description: "User profile management" },
     { name: "Address", description: "User address management endpoints" },
-    { name: "Jobs", description: "Job posting and management endpoints" },
+    { name: "Jobs", description: "Job posting, discovery, application & staffing endpoints" },
+    { name: "Assignments", description: "Job assignment lifecycle, travel, doorstep OTP & completion" },
+    { name: "Direct Hire", description: "Direct hiring requests between customers and workers" },
+    { name: "Team Invitations", description: "Worker team collaboration and invitations for jobs" },
+    { name: "Worker Connections", description: "Professional networking and connections between workers" },
+    { name: "Conversations", description: "In-app messaging for direct chats and job groups" },
+    { name: "Reviews", description: "Worker ratings and reviews for completed jobs" },
+    { name: "Notifications", description: "In-app notifications and alerts" },
     { name: "Uploads", description: "File upload and storage management" },
   ],
   components: {
@@ -345,6 +352,112 @@ export const swaggerDefinition: SwaggerDefinition = {
         type: "object",
         properties: {
           success: { type: "boolean" },
+        },
+      },
+
+      ApplyJobRequest: {
+        type: "object",
+        properties: {
+          message: { type: "string", description: "Cover note or message to the customer" },
+          proposedPrice: { type: "number", description: "Worker proposed price quote" },
+        },
+      },
+
+      SelectWorkersRequest: {
+        type: "object",
+        required: ["workerIds"],
+        properties: {
+          workerIds: {
+            type: "array",
+            items: { type: "number" },
+            description: "Array of worker IDs to assign to the job",
+          },
+        },
+      },
+
+      CreateTeamInvitationRequest: {
+        type: "object",
+        required: ["invitedWorkerId"],
+        properties: {
+          invitedWorkerId: { type: "number", description: "Worker ID being invited" },
+          message: { type: "string", description: "Optional invite message" },
+        },
+      },
+
+      VerifyStartOtpRequest: {
+        type: "object",
+        required: ["otp"],
+        properties: {
+          otp: { type: "string", description: "6-digit doorstep OTP provided by the customer" },
+        },
+      },
+
+      CancelAssignmentRequest: {
+        type: "object",
+        properties: {
+          reason: { type: "string", description: "Reason for cancellation" },
+        },
+      },
+
+      CreateDirectHireRequest: {
+        type: "object",
+        required: ["workerId"],
+        properties: {
+          workerId: { type: "number", description: "Target worker ID" },
+          serviceName: { type: "string", description: "Service requested" },
+          notes: { type: "string", description: "Customer instructions / requirements" },
+          scheduledDate: { type: "string", format: "date-time", description: "Requested service date" },
+          proposedPrice: { type: "number", description: "Proposed budget / price" },
+          addressId: { type: "number", description: "Existing address ID" },
+          address: { $ref: "#/components/schemas/AddAddressRequest" },
+        },
+      },
+
+      SendConnectionRequest: {
+        type: "object",
+        required: ["targetWorkerId"],
+        properties: {
+          targetWorkerId: { type: "number", description: "ID of the worker to connect with" },
+        },
+      },
+
+      CreateConversationRequest: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            enum: ["DIRECT", "JOB_GROUP"],
+            default: "DIRECT",
+            description: "Conversation type",
+          },
+          targetUserId: {
+            type: "number",
+            description: "Target user ID (required for DIRECT conversations)",
+          },
+          jobId: {
+            type: "number",
+            description: "Job ID (required for JOB_GROUP conversations)",
+          },
+        },
+      },
+
+      SendMessageRequest: {
+        type: "object",
+        required: ["message"],
+        properties: {
+          message: { type: "string", minLength: 1, description: "Message content" },
+        },
+      },
+
+      CreateReviewRequest: {
+        type: "object",
+        required: ["assignmentId", "rating"],
+        properties: {
+          assignmentId: { type: "number", description: "Completed assignment ID" },
+          rating: { type: "number", minimum: 1, maximum: 5, description: "Rating score 1 to 5" },
+          comment: { type: "string", description: "Feedback review text" },
+          timelinessRating: { type: "number", minimum: 1, maximum: 5 },
+          qualityRating: { type: "number", minimum: 1, maximum: 5 },
         },
       },
     },

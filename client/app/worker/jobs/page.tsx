@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -15,20 +15,99 @@ import {
 import JobRequestCard from '@/components/worker/JobRequestCard';
 import { MOCK_INCOMING_REQUESTS } from '@/data/mockWorkerData';
 import { WorkerJobRequest } from '@/types';
+import { getToken } from '@/lib/auth-client';
 
 export default function WorkerJobRequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<WorkerJobRequest[]>(MOCK_INCOMING_REQUESTS);
   const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'ACCEPTED'>('ALL');
+  const [loading, setLoading] = useState(false);
 
-  const handleAcceptJob = (id: string) => {
+  const fetchInboundRequests = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/direct-hire-requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const apiRequests = data.requests || data.data?.requests || [];
+
+        if (apiRequests.length > 0) {
+          const mapped: WorkerJobRequest[] = apiRequests.map((r: any) => ({
+            id: r.id,
+            customerId: r.customerId,
+            customerName: r.customer?.user?.name || 'Customer',
+            customerAvatar:
+              r.customer?.user?.profileImage ||
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+            customerPhone: '+91 98140 88219',
+            serviceName: r.serviceName,
+            serviceCategory: 'Direct Booking',
+            location: r.address ? `${r.address.address}, ${r.address.city}` : 'Chandigarh Sector 35',
+            distanceKm: 1.5,
+            earningsAmount: Number(r.proposedPrice) || 499,
+            date: r.requestedDate,
+            timeWindow: `${r.requestedStartTime} - ${r.requestedEndTime}`,
+            status: r.status === 'ACCEPTED' ? 'ACCEPTED' : r.status === 'DECLINED' ? 'DECLINED' : 'PENDING',
+            otp: '4829',
+            expiresInSeconds: 300,
+          }));
+          setRequests(mapped);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch direct hire requests:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchInboundRequests();
+  }, []);
+
+  const handleAcceptJob = async (id: string) => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`/api/direct-hire-requests/${id}/accept`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const assignmentId = data.assignment?.id || data.data?.assignment?.id || id;
+        router.push(`/worker/jobs/${assignmentId}`);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to accept direct hire:', err);
+    }
+
+    // Local fallback
     setRequests((prev) =>
       prev.map((j) => (j.id === id ? { ...j, status: 'ACCEPTED' } : j))
     );
     router.push(`/worker/jobs/${id}`);
   };
 
-  const handleDeclineJob = (id: string) => {
+  const handleDeclineJob = async (id: string) => {
+    const token = getToken();
+    if (token) {
+      try {
+        await fetch(`/api/direct-hire-requests/${id}/decline`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err) {
+        console.error('Failed to decline direct hire:', err);
+      }
+    }
+
     setRequests((prev) => prev.filter((j) => j.id !== id));
   };
 
