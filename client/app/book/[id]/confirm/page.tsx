@@ -48,6 +48,8 @@ export default function BookingConfirmCheckoutPage() {
 
     setIsProcessing(true);
     setBookingError(null);
+    const getTomorrowDate = () => new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
 
     try {
       const rawWorkerId = pro.id.replace(/\D/g, '') || '1';
@@ -61,7 +63,7 @@ export default function BookingConfirmCheckoutPage() {
         body: JSON.stringify({
           workerId: rawWorkerId,
           serviceName: services[0]?.name || 'Home Maintenance Service',
-          requestedDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+          requestedDate: getTomorrowDate(),
           requestedStartTime: '10:00',
           requestedEndTime: '12:00',
           customerMessage: `Direct booking with payment mode ${paymentMethod}.`,

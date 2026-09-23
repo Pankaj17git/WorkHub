@@ -27,7 +27,10 @@ const createJobSchema = z.object({
   preferredDate: z.string().optional(),
   preferredStartTime: z.string().optional(),
   preferredEndTime: z.string().optional(),
+  applicationDeadline: z.string().optional(),
   requiredWorkers: z.number().int().min(1).max(10).optional(),
+  minimumWorkers: z.number().int().min(1).max(10).optional(),
+  maximumWorkers: z.number().int().min(1).max(20).optional(),
   workerRequirementType: z
     .enum(["CUSTOMER_DEFINED", "PLATFORM_RECOMMENDED", "UNKNOWN"])
     .optional(),

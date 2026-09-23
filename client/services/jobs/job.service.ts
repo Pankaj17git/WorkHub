@@ -15,7 +15,10 @@ export interface CreateJobInput {
   preferredDate?: string;
   preferredStartTime?: string;
   preferredEndTime?: string;
+  applicationDeadline?: string;
   requiredWorkers?: number;
+  minimumWorkers?: number;
+  maximumWorkers?: number;
   workerRequirementType?: "CUSTOMER_DEFINED" | "PLATFORM_RECOMMENDED" | "UNKNOWN";
   address?: {
     address: string;
@@ -62,6 +65,7 @@ export const JobService = {
     }
 
     const preferredDateObj = input.preferredDate ? new Date(input.preferredDate) : null;
+    const applicationDeadlineObj = input.applicationDeadline ? new Date(input.applicationDeadline) : null;
 
     const job = await prisma.job.create({
       data: {
@@ -76,11 +80,12 @@ export const JobService = {
         preferredDate: preferredDateObj,
         preferredStartTime: input.preferredStartTime,
         preferredEndTime: input.preferredEndTime,
+        applicationDeadline: applicationDeadlineObj,
         skills: input.skills,
         workerRequirementType,
         requiredWorkers,
-        minimumWorkers: 1,
-        maximumWorkers: 10,
+        minimumWorkers: input.minimumWorkers !== undefined ? input.minimumWorkers : 1,
+        maximumWorkers: input.maximumWorkers !== undefined ? input.maximumWorkers : 10,
         assignedWorkerCount: 0,
         staffingStatus: "OPEN",
         status: "OPEN",
