@@ -92,7 +92,7 @@ export const uploadController = {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: status.UNAUTHORIZED });
     }
-    await uploadService.deleteFile(key);
+    await uploadService.deleteFileOnCloudinary(key);
     return NextResponse.json({ success: true });
   },
 };
