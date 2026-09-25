@@ -17,6 +17,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import api from '@/lib/api';
 
 interface WorkerConnection {
   id: string;
@@ -71,21 +72,15 @@ export default function WorkerNetworkPage() {
     if (showLoading) setLoading(true);
     try {
       // 1. Accepted connections
-      const connRes = await fetch('/api/worker-connections?status=ACCEPTED', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (connRes.ok) {
-        const data = await connRes.json();
-        setConnections(data.connections || data.data?.connections || []);
+      const connRes = await api.get('/api/worker-connections?status=ACCEPTED');
+      if (connRes.data) {
+        setConnections(connRes.data.connections || connRes.data.data?.connections || []);
       }
 
       // 2. Pending connection requests
-      const pendingRes = await fetch('/api/worker-connections?status=PENDING', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (pendingRes.ok) {
-        const data = await pendingRes.json();
-        setPendingRequests(data.connections || data.data?.connections || []);
+      const pendingRes = await api.get('/api/worker-connections?status=PENDING');
+      if (pendingRes.data) {
+        setPendingRequests(pendingRes.data.connections || pendingRes.data.data?.connections || []);
       }
     } catch (err) {
       console.error('Failed to load network:', err);
@@ -95,8 +90,16 @@ export default function WorkerNetworkPage() {
   };
 
   useEffect(() => {
-    loadNetworkData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+
+    (async () => {
+      await loadNetworkData();
+      if (cancelled) return;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleAcceptConnection = async (id: string) => {
@@ -104,11 +107,8 @@ export default function WorkerNetworkPage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`/api/worker-connections/${id}/accept`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
+      const res = await api.post(`/api/worker-connections/${id}/accept`);
+      if (res.data) {
         loadNetworkData();
       }
     } catch (err) {
@@ -121,11 +121,8 @@ export default function WorkerNetworkPage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`/api/worker-connections/${id}/reject`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
+      const res = await api.post(`/api/worker-connections/${id}/reject`);
+      if (res.data) {
         loadNetworkData();
       }
     } catch (err) {
@@ -144,8 +141,7 @@ export default function WorkerNetworkPage() {
     setNotice(null);
 
     try {
-      const res = await fetch('/api/worker-connections', {
-        method: 'POST',
+      const res = await api.post('/api/worker-connections', {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -153,9 +149,8 @@ export default function WorkerNetworkPage() {
         body: JSON.stringify({ targetWorkerId: targetWorkerId.trim() }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setNotice({ type: 'error', message: data.error || 'Failed to send connection request.' });
+      if (!res.data) {
+        setNotice({ type: 'error', message: 'Failed to send connection request.' });
         setSendingRequest(false);
         return;
       }

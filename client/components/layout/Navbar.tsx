@@ -43,7 +43,6 @@ export default function Navbar() {
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      setUnreadCount(0);
       return;
     }
 
@@ -56,11 +55,10 @@ export default function Navbar() {
       .catch(() => {});
   }, [session]);
 
-  // Close dropdowns on route changes
-  useEffect(() => {
+  const closeMenus = () => {
     setProfileDropdownOpen(false);
     setMobileMenuOpen(false);
-  }, [pathname]);
+  };
 
   // Click-outside listener for profile dropdown
   useEffect(() => {
@@ -470,6 +468,7 @@ export default function Navbar() {
             <div className="flex flex-col gap-1 pt-2">
               <Link
                 href={homeHref}
+                onClick={closeMenus}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
                   isHomeOrDashboardActive ? 'text-[#0066f5] bg-blue-50/70' : 'text-slate-700 hover:bg-slate-50'
                 }`}
@@ -481,6 +480,7 @@ export default function Navbar() {
               {(!session || isCustomer) && (
                 <Link
                   href="/search?mode=workers"
+                  onClick={closeMenus}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     isFindWorkersActive
                       ? 'text-[#0066f5] bg-blue-50/70'
@@ -494,6 +494,7 @@ export default function Navbar() {
 
               {(!session || isWorker) && (
                 <Link
+                  onClick={closeMenus}
                   href="/jobs"
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     isFindJobsActive
@@ -509,6 +510,7 @@ export default function Navbar() {
               {/* Post a Job for Customer or Unregistered */}
               {isCustomer && (
                 <Link
+                  onClick={closeMenus}
                   href="/jobs/new"
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-[#0066f5] bg-blue-50 hover:bg-blue-100/70 transition-colors"
                 >
@@ -519,6 +521,7 @@ export default function Navbar() {
 
               {!session && (
                 <Link
+                  onClick={closeMenus}
                   href="/login?redirect=/jobs/new"
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-[#0066f5] bg-blue-50 hover:bg-blue-100/70 transition-colors"
                 >
@@ -530,6 +533,7 @@ export default function Navbar() {
               {session && (
                 <>
                   <Link
+                    onClick={closeMenus}
                     href="/messages"
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
                       isMessagesActive
@@ -542,6 +546,7 @@ export default function Navbar() {
                   </Link>
 
                   <Link
+                    onClick={closeMenus}
                     href="/notifications"
                     className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
                       isNotificationsActive
@@ -564,6 +569,7 @@ export default function Navbar() {
 
               {isWorker && (
                 <Link
+                  onClick={closeMenus}
                   href="/worker/dashboard"
                   className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-bold mt-1"
                 >

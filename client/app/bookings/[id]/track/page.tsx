@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';
 import StatusTimeline from '@/components/booking/StatusTimeline';
-import PriceTag from '@/components/ui/PriceTag';
 import { getToken } from '@/lib/auth-client';
 import { JobStatus } from '@/generated/prisma/enums';
 

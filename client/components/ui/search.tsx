@@ -25,11 +25,10 @@ import JobSearchCard from '@/components/marketplace/JobSearchCard';
 import { MOCK_PROS, MOCK_JOB_POSTINGS, MockJobPosting } from '@/data/mockData';
 import { Professional } from '@/types';
 import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import api from '@/lib/api';
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
   // Initial params
   const initialQuery = searchParams.get('q') || '';
@@ -64,14 +63,6 @@ function SearchContent() {
   // Data lists
   const [prosList, setProsList] = useState<Professional[]>(MOCK_PROS);
   const [jobsList, setJobsList] = useState<MockJobPosting[]>(MOCK_JOB_POSTINGS);
-  const [loading, setLoading] = useState(false);
-
-  // Sync mode from session role on mount if no param provided
-  useEffect(() => {
-    if (!searchParams.get('mode') && session?.role === 'WORKER') {
-      setSearchMode('jobs');
-    }
-  }, [session, searchParams]);
 
   // Fetch real workers if available, fallback to mock
   useEffect(() => {
