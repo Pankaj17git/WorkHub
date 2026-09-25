@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore, useLayoutEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -110,40 +110,6 @@ export default function JobDetailPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteNotice, setInviteNotice] = useState<string | null>(null);
 
-  const fetchJob = async () => {
-    try {
-      const res = await fetch(`/api/jobs/${jobId}`);
-      if (!res.ok) {
-        setError('Job not found or has been closed.');
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      const loadedJob = data.job || data.data?.job;
-      setJob(loadedJob);
-
-      // If logged in customer is the job poster, fetch applications
-      const token = getToken();
-      if (token) {
-        const appsRes = await fetch(`/api/jobs/${jobId}/applications`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (appsRes.ok) {
-          const appsData = await appsRes.json();
-          setApplications(appsData.applications || appsData.data?.applications || []);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch job details.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchJob();
-  }, [jobId]);
 
   // Handle worker apply
   const handleApply = async (e: React.FormEvent) => {
@@ -264,6 +230,41 @@ export default function JobDetailPage() {
       setInviting(false);
     }
   };
+
+  const fetchJob = async () => {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`);
+      if (!res.ok) {
+        setError('Job not found or has been closed.');
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      const loadedJob = data.job || data.data?.job;
+      setJob(loadedJob);
+
+      // If logged in customer is the job poster, fetch applications
+      const token = getToken();
+      if (token) {
+        const appsRes = await fetch(`/api/jobs/${jobId}/applications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (appsRes.ok) {
+          const appsData = await appsRes.json();
+          setApplications(appsData.applications || appsData.data?.applications || []);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to fetch job details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useLayoutEffect(() => {
+    fetchJob();
+  }, [jobId])
 
   if (loading) {
     return (

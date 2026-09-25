@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -12,7 +12,7 @@ import {
   Check,
   ArrowRight
 } from 'lucide-react';
-import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 
 interface AppNotification {
@@ -28,37 +28,39 @@ interface AppNotification {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
+  const { token, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pending, startTransition] = useTransition()
 
-  const fetchNotifications = async () => {
-    const token = getToken();
-    if (!token) {
-      router.push('/login?redirect=/notifications');
-      return;
-    }
-
-    setLoading(true);
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
     try {
       const url = `/api/notifications${unreadOnly ? '?unread=true' : ''}`;
       const res = await api.get(url, {
         metadata: { feature: 'notifications' },
       });
       const data = res.data;
-      setNotifications(data.notifications || data.data?.notifications || []);
+      startTransition(() => setNotifications(data.notifications || data.data?.notifications || []));
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, unreadOnly]);
 
   useEffect(() => {
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      router.push('/login?redirect=/notifications');
+      return;
+    }
+
     fetchNotifications();
-  }, [unreadOnly]);
+  }, [authLoading, isAuthenticated, fetchNotifications, router]);
 
   const handleMarkAsRead = async (id: string) => {
     try {

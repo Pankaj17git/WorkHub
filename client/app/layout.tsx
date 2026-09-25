@@ -4,6 +4,7 @@ import { Hanken_Grotesk, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 import RouteNotice from "@/components/ui/RouteNotice";
+import { AuthProvider } from "@/context/AuthContext";
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -43,7 +44,9 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <RouteNotice />
         </Suspense>
-        <AppShell>{children}</AppShell>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

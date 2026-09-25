@@ -20,7 +20,7 @@ import {
 import { MockJobPosting } from '@/data/mockData';
 
 interface JobSearchCardProps {
-  job: MockJobPosting | any;
+  job: MockJobPosting;
   viewMode?: 'list' | 'grid';
 }
 

@@ -10,6 +10,7 @@ import React, {
   useSyncExternalStore,
   ReactNode,
   Suspense,
+  useTransition,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
@@ -120,6 +121,7 @@ export function MessagingProvider({
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [pending, startTransition] = useTransition();
 
   // Map of conversationId -> { [userId: string]: { userName?: string } }
   const [typingMap, setTypingMap] = useState<{
@@ -170,15 +172,17 @@ export function MessagingProvider({
       router.push('/login?redirect=/messages');
       return;
     }
-
-    setLoadingConvs(true);
     try {
       if (targetUserId) {
         try {
           const initRes = await api.post('/api/conversations', { targetUserId });
           const initData = initRes.data;
           const cId = initData.conversationId || initData.data?.conversationId;
-          if (cId) setActiveConvId(cId);
+          if (cId){
+            startTransition(() => {
+              setActiveConvId(cId);
+            });
+          }
         } catch (postErr) {
           console.error('Failed to initiate conversation with target user:', postErr);
         }
@@ -187,8 +191,10 @@ export function MessagingProvider({
       const res = await api.get('/api/conversations');
       const data = res.data;
       const convList: Conversation[] = data.conversations || data.data?.conversations || [];
-      setConversations(convList);
-      setActiveConvId((prev) => (prev ? prev : convList.length > 0 ? convList[0].id : null));
+      startTransition(() => {
+        setConversations(convList);
+        setActiveConvId((prev) => (prev ? prev : convList.length > 0 ? convList[0].id : null));
+      })
     } catch (err) {
       console.error('Failed to load conversations:', err);
     } finally {
@@ -326,11 +332,13 @@ export function MessagingProvider({
       const token = getToken();
       if (!token) return;
 
-      setLoadingMessages(true);
+      startTransition(() => setLoadingMessages(true));
       try {
         const res = await api.get(`/api/conversations/${idToFetch}/messages`);
         const data = res.data;
-        setMessages(data.messages || data.data?.messages || []);
+        startTransition(() => {
+          setMessages(data.messages || data.data?.messages || []);
+        });
       } catch (err) {
         console.error('Failed to fetch messages:', err);
       } finally {
@@ -391,7 +399,9 @@ export function MessagingProvider({
   // Reset typing state and input when switching conversations
   useEffect(() => {
     stopTyping();
-    setNewMessage('');
+    startTransition(() => {
+      setNewMessage('');
+    });
   }, [activeConvId, stopTyping]);
 
   // Send message through socket

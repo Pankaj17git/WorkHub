@@ -9,6 +9,10 @@ interface AuthPayload {
   sub?: string;
 }
 
+interface CustomSocket extends Socket {
+  userId?: string;
+}
+
 function extractTokenFromCookie(cookieHeader?: string): string | null {
   if (!cookieHeader) return null;
   const match = cookieHeader.match(/(?:^|; )\s*wh_token=([^;]*)/);
@@ -16,7 +20,7 @@ function extractTokenFromCookie(cookieHeader?: string): string | null {
 }
 
 function resolveUserId(socket: Socket, token?: string): string | null {
-  const currentUserId = (socket as any).userId;
+  const currentUserId = (socket as CustomSocket).userId;
   if (currentUserId) return currentUserId.toString();
 
   const rawToken =
@@ -30,7 +34,7 @@ function resolveUserId(socket: Socket, token?: string): string | null {
     const decoded = jwt.verify(rawToken, process.env.JWT_SECRET) as AuthPayload;
     const resolvedId = decoded.userId || decoded.sub;
     if (resolvedId) {
-      (socket as any).userId = resolvedId;
+      (socket as CustomSocket).userId = resolvedId;
       return resolvedId.toString();
     }
   } catch {
@@ -40,7 +44,6 @@ function resolveUserId(socket: Socket, token?: string): string | null {
 }
 
 export const initSocketServer = (io: Server) => {
-  console.log("the socket is initialized")
   // Authentication middleware
   io.use((socket, next) => {
     try {
@@ -52,7 +55,7 @@ export const initSocketServer = (io: Server) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET) as AuthPayload;
         const uid = decoded.userId || decoded.sub;
         if (uid) {
-          (socket as any).userId = uid.toString();
+          (socket as CustomSocket).userId = uid.toString();
         }
       }
       next();
@@ -232,11 +235,13 @@ export const initSocketServer = (io: Server) => {
               updatedAt: formattedMessage.createdAt,
             });
           }
-        } catch (err: any) {
-          console.error("[Socket] message:send error:", err);
-          socket.emit("message:error", {
-            error: err?.message || "Failed to process message",
-          });
+        } catch (err: unknown) {
+          if (err instanceof Error) {
+            console.error("[Socket] message:send error:", err);
+            socket.emit("message:error", {
+              error: err?.message || "Failed to process message",
+            });
+          }
         }
       }
     );
@@ -285,7 +290,7 @@ export const initSocketServer = (io: Server) => {
     );
 
     socket.on("disconnect", () => {
-      const uid = (socket as any).userId;
+      const uid = (socket as CustomSocket).userId;
       if (uid) {
         console.log(`[Socket] User disconnected: ${uid}`);
       }
