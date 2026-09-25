@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';
 import PriceTag from '@/components/ui/PriceTag';
+import { getToken } from '@/lib/auth-client';
 
 export default function BookingConfirmCheckoutPage() {
   const params = useParams();
@@ -28,8 +29,9 @@ export default function BookingConfirmCheckoutPage() {
   const [promoCode, setPromoCode] = useState('WORKHUB100');
   const [promoApplied, setPromoApplied] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
-  // Mock booking calculation
+  // Booking calculation
   const services = pro.services.slice(0, 1);
   const baseTotal = services.reduce((s, i) => s + i.price, 0);
   const platformFee = 49;
@@ -37,12 +39,59 @@ export default function BookingConfirmCheckoutPage() {
   const discount = promoApplied ? 100 : 0;
   const grandTotal = Math.max(0, baseTotal + platformFee + tax - discount);
 
-  const handleCompleteBooking = () => {
+  const handleCompleteBooking = async () => {
+    const token = getToken();
+    if (!token) {
+      router.push(`/login?role=CUSTOMER&redirect=/book/${pro.id}/confirm`);
+      return;
+    }
+
     setIsProcessing(true);
-    setTimeout(() => {
+    setBookingError(null);
+    const getTomorrowDate = () => new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+
+    try {
+      const rawWorkerId = pro.id.replace(/\D/g, '') || '1';
+
+      const res = await fetch('/api/direct-hire-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          workerId: rawWorkerId,
+          serviceName: services[0]?.name || 'Home Maintenance Service',
+          requestedDate: getTomorrowDate(),
+          requestedStartTime: '10:00',
+          requestedEndTime: '12:00',
+          customerMessage: `Direct booking with payment mode ${paymentMethod}.`,
+          proposedPrice: grandTotal,
+          address: {
+            address: 'Sector 35-C, House 241',
+            city: 'Chandigarh',
+            state: 'Punjab',
+            country: 'India',
+            latitude: 30.7333,
+            longitude: 76.7794,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setBookingError(data.error || 'Failed to submit direct hire request.');
+        setIsProcessing(false);
+        return;
+      }
+
+      router.push(`/book/${pro.id}/success?requestId=${data.request?.id || ''}`);
+    } catch (err) {
+      console.error('Booking failed:', err);
+      setBookingError('An error occurred during checkout. Please try again.');
       setIsProcessing(false);
-      router.push(`/book/${pro.id}/success`);
-    }, 900);
+    }
   };
 
   return (
@@ -72,6 +121,12 @@ export default function BookingConfirmCheckoutPage() {
           <span>256-Bit SSL Encrypted</span>
         </div>
       </div>
+
+      {bookingError && (
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold">
+          {bookingError}
+        </div>
+      )}
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">

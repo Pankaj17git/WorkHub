@@ -13,6 +13,155 @@ export const MOCK_CATEGORIES: Category[] = [
 
 export const MOCK_PROS: Professional[] = [
   {
+    id: 'pro-amit',
+    name: 'Amit Kumar',
+    title: 'Electrician & Electrical Specialist',
+    avatar: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&auto=format&fit=crop&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&auto=format&fit=crop&q=80',
+    category: 'Electricians',
+    location: 'Sector 22, Chandigarh',
+    distanceKm: 3.2,
+    rating: 4.8,
+    reviewCount: 132,
+    completedJobs: 340,
+    experienceYears: 8,
+    hourlyRate: 400,
+    verified: true,
+    online: true,
+    responseTimeMinutes: 15,
+    about: 'Licensed electrician with 8+ years of experience in residential and commercial installations, repairs and maintenance.',
+    skills: ['Wiring', 'Panel Upgrade', 'Lighting', 'Switches & Outlets', 'Circuit Breakers', 'Earthing', 'Safety Audit'],
+    services: [
+      { id: 'srv-a1', name: 'Electrical Panel & MCB Inspection', description: 'Complete panel load testing and circuit breaker replacement.', price: 400, durationMinutes: 45, popular: true },
+      { id: 'srv-a2', name: 'Complete Home Wiring Diagnostics', description: 'Fault tracing, neutral leakage testing and earthing check.', price: 600, durationMinutes: 60, popular: true },
+      { id: 'srv-a3', name: 'Chandelier & Designer Light Fitting', description: 'Heavy ceiling mount and concealed wiring setup.', price: 350, durationMinutes: 30 },
+    ],
+    reviews: [
+      {
+        id: 'rev-a1',
+        author: 'Sunil Rao',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+        rating: 5.0,
+        date: '12 Aug 2026',
+        serviceUsed: 'Electrical Panel & MCB Inspection',
+        verified: true,
+        comment: 'Amit did a phenomenal job fixing our tripped main line. Very professional and tidy.'
+      }
+    ],
+    badges: ['Govt. Certified', 'Top Rated 2026', 'Verified Identity']
+  },
+  {
+    id: 'pro-rohit',
+    name: 'Rohit Verma',
+    title: 'Plumber & Sanitary Expert',
+    avatar: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&auto=format&fit=crop&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1200&auto=format&fit=crop&q=80',
+    category: 'Plumbers',
+    location: 'Sector 17, Chandigarh',
+    distanceKm: 4.8,
+    rating: 4.7,
+    reviewCount: 98,
+    completedJobs: 210,
+    experienceYears: 6,
+    hourlyRate: 350,
+    verified: true,
+    online: true,
+    responseTimeMinutes: 20,
+    about: 'Skilled plumber with expertise in pipe fitting, leak detection, bathroom fittings and water pump installation.',
+    skills: ['Pipe Fitting', 'Leak Repair', 'Bathroom Fittings', 'Water Pumps', 'Drain Cleaning', 'Sanitary Ware', 'Geyser Installation'],
+    services: [
+      { id: 'srv-r1', name: 'Concealed Pipeline Leak Repair', description: 'Precision acoustic pinpointing and copper/CPVC pipe patching.', price: 499, durationMinutes: 50, popular: true },
+      { id: 'srv-r2', name: 'Complete Bathroom Sanitary Fitting', description: 'Mixer faucet, shower head, divertor and jet spray setup.', price: 350, durationMinutes: 40, popular: true },
+    ],
+    reviews: [
+      {
+        id: 'rev-r1',
+        author: 'Meenakshi Iyer',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
+        rating: 5.0,
+        date: '08 Aug 2026',
+        serviceUsed: 'Concealed Pipeline Leak Repair',
+        verified: true,
+        comment: 'Rohit identified our stubborn bathroom seepage within 15 minutes. Highly recommended!'
+      }
+    ],
+    badges: ['Licensed Plumber', 'Top Rated', 'Verified Identity']
+  },
+  {
+    id: 'pro-sandeep',
+    name: 'Sandeep Singh',
+    title: 'AC Repair & Service Technician',
+    avatar: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=1200&auto=format&fit=crop&q=80',
+    category: 'AC & Appliance Repair',
+    location: 'Sector 35, Chandigarh',
+    distanceKm: 5.6,
+    rating: 4.9,
+    reviewCount: 164,
+    completedJobs: 480,
+    experienceYears: 7,
+    hourlyRate: 450,
+    verified: true,
+    online: true,
+    responseTimeMinutes: 10,
+    about: 'Expert in AC installation, repair and maintenance for all major brands. Fast, reliable and professional service.',
+    skills: ['AC Repair', 'AC Installation', 'Gas Refilling', 'Troubleshooting', 'PCB Diagnostics', 'Coil Cleaning'],
+    services: [
+      { id: 'srv-s1', name: 'Deep Jet Pump AC Foam Cleaning', description: 'Dual unit anti-bacterial foam treatment & power coil wash.', price: 450, durationMinutes: 45, popular: true },
+      { id: 'srv-s2', name: 'Refrigerant Leak Test & Gas Refill', description: 'Nitrogen leak test followed by pure R32/R410A charge.', price: 1800, durationMinutes: 75, popular: true },
+    ],
+    reviews: [
+      {
+        id: 'rev-s1',
+        author: 'Vivek Chawla',
+        avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80',
+        rating: 5.0,
+        date: '04 Aug 2026',
+        serviceUsed: 'Deep Jet Pump AC Foam Cleaning',
+        verified: true,
+        comment: 'Sandeep is top-tier. Cleaned both our ACs without spilling a drop on our wooden floors.'
+      }
+    ],
+    badges: ['HVAC Certified', 'Top Rated', 'Verified Identity']
+  },
+  {
+    id: 'pro-vikas',
+    name: 'Vikas Sharma',
+    title: 'Painter & Wall Decor Expert',
+    avatar: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=400&auto=format&fit=crop&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=1200&auto=format&fit=crop&q=80',
+    category: 'Painters',
+    location: 'Sector 20, Chandigarh',
+    distanceKm: 6.1,
+    rating: 4.6,
+    reviewCount: 76,
+    completedJobs: 190,
+    experienceYears: 5,
+    hourlyRate: 300,
+    verified: true,
+    online: true,
+    responseTimeMinutes: 25,
+    about: 'Professional painter with expertise in interior & exterior painting, texture finishes and wall decoration.',
+    skills: ['Interior Painting', 'Exterior Painting', 'Texture Finish', 'Wallpaper', 'Waterproofing', 'Wood Polishing'],
+    services: [
+      { id: 'srv-v1', name: 'Feature Wall Textured Painting', description: 'Designer metallic or rustic texture application.', price: 850, durationMinutes: 90, popular: true },
+      { id: 'srv-v2', name: 'Room Repainting & Putty Touchup', description: 'Wall sanding, primer coat and 2 coats of emulsion.', price: 499, durationMinutes: 60, popular: true },
+    ],
+    reviews: [
+      {
+        id: 'rev-v1',
+        author: 'Ananya Gupta',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+        rating: 5.0,
+        date: '10 Aug 2026',
+        serviceUsed: 'Feature Wall Textured Painting',
+        verified: true,
+        comment: 'Vikas gave our living room accent wall such a luxurious finish. Amazing craftsmanship.'
+      }
+    ],
+    badges: ['Paint Specialist', 'Color Expert', 'Verified Identity']
+  },
+  {
     id: 'pro-1',
     name: 'Rahul Sharma',
     title: 'Master Electrician & Smart Home Specialist',
@@ -174,3 +323,120 @@ export const MOCK_PROS: Professional[] = [
     badges: ['Woodcraft Master', 'Verified Identity']
   }
 ];
+
+export interface MockJobPosting {
+  id: string;
+  title: string;
+  category: string;
+  customerName: string;
+  customerAvatar: string;
+  location: string;
+  distanceKm: number;
+  postedAt: string;
+  status: 'OPEN' | 'URGENT' | 'IN_PROGRESS';
+  minBudget: number;
+  maxBudget: number;
+  requiredWorkers: number;
+  description: string;
+  skills: string[];
+}
+
+export const MOCK_JOB_POSTINGS: MockJobPosting[] = [
+  {
+    id: 'job-p1',
+    title: 'Urgent 3-Phase MCB Tripping Diagnostics & Wiring Overhaul',
+    category: 'Electricians',
+    customerName: 'Aarav Malhotra',
+    customerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    location: 'Sector 22, Chandigarh',
+    distanceKm: 2.1,
+    postedAt: '2 hours ago',
+    status: 'URGENT',
+    minBudget: 800,
+    maxBudget: 1500,
+    requiredWorkers: 1,
+    description: 'Main breaker repeatedly trips whenever two air conditioners run simultaneously. Need a licensed electrician with load testing instruments to fix neutral faults.',
+    skills: ['Wiring', 'Panel Upgrade', 'Circuit Breakers', 'Safety Audit'],
+  },
+  {
+    id: 'job-p2',
+    title: 'Concealed Bathroom Seepage & High Pressure Diverter Fitting',
+    category: 'Plumbers',
+    customerName: 'Priya Singla',
+    customerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
+    location: 'Sector 17, Chandigarh',
+    distanceKm: 3.4,
+    postedAt: '4 hours ago',
+    status: 'OPEN',
+    minBudget: 600,
+    maxBudget: 1200,
+    requiredWorkers: 1,
+    description: 'Dampness showing on master bedroom wall originating from adjacent bath divertor. Requires acoustic leak pinpointing and pipe joint replacement.',
+    skills: ['Pipe Fitting', 'Leak Repair', 'Bathroom Fittings', 'Sanitary Ware'],
+  },
+  {
+    id: 'job-p3',
+    title: 'Dual Split AC Deep Foam Wash & R32 Gas Refill',
+    category: 'AC & Appliance Repair',
+    customerName: 'Ramesh Kulkarni',
+    customerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+    location: 'Sector 35, Chandigarh',
+    distanceKm: 4.2,
+    postedAt: '5 hours ago',
+    status: 'OPEN',
+    minBudget: 1200,
+    maxBudget: 2400,
+    requiredWorkers: 2,
+    description: 'Two 1.5 ton Inverter AC units in office need pressure foam service, outdoor coil cleaning and refrigerant top-up before summer peak.',
+    skills: ['AC Repair', 'Gas Refilling', 'Troubleshooting', 'Coil Cleaning'],
+  },
+  {
+    id: 'job-p4',
+    title: 'Living Room Texture Painting & Wall Primer Treatment',
+    category: 'Painters',
+    customerName: 'Harsh Vardhan',
+    customerAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80',
+    location: 'Sector 20, Chandigarh',
+    distanceKm: 5.0,
+    postedAt: '1 day ago',
+    status: 'OPEN',
+    minBudget: 2500,
+    maxBudget: 4500,
+    requiredWorkers: 2,
+    description: 'Accent wall in 220 sq ft living room needs rustic concrete texture finish. Paint material provided by client; skilled labor needed.',
+    skills: ['Interior Painting', 'Texture Finish', 'Wallpaper', 'Wall Prep'],
+  },
+  {
+    id: 'job-p5',
+    title: 'Modular Kitchen Hydraulic Hinges & Drawer Alignment',
+    category: 'Carpenters',
+    customerName: 'Kavita Menon',
+    customerAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
+    location: 'Phase 7, Mohali',
+    distanceKm: 6.8,
+    postedAt: '1 day ago',
+    status: 'OPEN',
+    minBudget: 700,
+    maxBudget: 1400,
+    requiredWorkers: 1,
+    description: 'Six soft-close cabinet doors sagging and two tandem box kitchen drawers jumping off rails. Need replacement hinges and proper leveling.',
+    skills: ['Modular Kitchen Adjustments', 'Hydraulic Hinges', 'Custom Shelving'],
+  },
+  {
+    id: 'job-p6',
+    title: 'Pre-Move Deep Sanitization & High-Pressure Floor Scrubbing',
+    category: 'Deep Cleaning',
+    customerName: 'Devika Chawla',
+    customerAvatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=120&auto=format&fit=crop&q=80',
+    location: 'Sector 43, Chandigarh',
+    distanceKm: 3.9,
+    postedAt: '2 days ago',
+    status: 'OPEN',
+    minBudget: 2200,
+    maxBudget: 3800,
+    requiredWorkers: 3,
+    description: 'Full 3BHK flat deep cleaning including balcony tile scrubbing, window tracks, kitchen exhaust degreasing and bathroom descaling.',
+    skills: ['Deep Cleaning', 'Degreasing', 'Floor Scrubbing', 'Sanitization'],
+  },
+];
+

@@ -14,6 +14,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';
+import { getToken } from '@/lib/auth-client';
 
 export default function BookingReviewPage() {
   const params = useParams();
@@ -33,6 +34,7 @@ export default function BookingReviewPage() {
   );
   const [tipAmount, setTipAmount] = useState<number>(100);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const availableTags = [
     'Punctual & On Time',
@@ -52,8 +54,31 @@ export default function BookingReviewPage() {
     }
   };
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    const token = getToken();
+    const numericId = proId.replace(/\D/g, '') || '1';
+
+    setSubmitting(true);
+    if (token) {
+      try {
+        await fetch('/api/reviews', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            assignmentId: numericId,
+            rating,
+            comment: `${selectedTags.join(', ')}. ${feedback}`.trim(),
+          }),
+        });
+      } catch (err) {
+        console.error('Review submit failed:', err);
+      }
+    }
+    setSubmitting(false);
     setIsSubmitted(true);
   };
 

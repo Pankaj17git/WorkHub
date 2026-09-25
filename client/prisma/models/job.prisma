@@ -1,0 +1,71 @@
+enum JobStatus {
+  DRAFT
+  OPEN
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum WorkerRequirementType {
+  CUSTOMER_DEFINED
+  PLATFORM_RECOMMENDED
+  UNKNOWN
+}
+
+enum StaffingStatus {
+  OPEN
+  PARTIALLY_ASSIGNED
+  FULLY_ASSIGNED
+  ADDITIONAL_WORKERS_REQUIRED
+}
+
+model Job {
+  id                    BigInt                @id @default(autoincrement())
+  title                 String                @db.VarChar(255)
+  description           String                @db.Text
+  serviceName           String?               @map("service_name") @db.VarChar(100)
+
+  customerId            BigInt                @map("created_by")
+  customer              Customer              @relation("PostedJobs", fields: [customerId], references: [id], onDelete: Cascade)
+
+  addressId             BigInt?               @unique @map("address_id")
+  address               Address?              @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  minAmount             Decimal?              @map("min_amount") @db.Decimal(10, 2)
+  maxAmount             Decimal?              @map("max_amount") @db.Decimal(10, 2)
+  currency              String?               @default("INR") @db.VarChar(10)
+
+  preferredDate         DateTime?             @map("preferred_date") @db.Date
+  preferredStartTime    String?               @map("preferred_start_time") @db.VarChar(10)
+  preferredEndTime      String?               @map("preferred_end_time") @db.VarChar(10)
+  applicationDeadline   DateTime?             @map("application_deadline") @db.Timestamp(6)
+
+  workerRequirementType WorkerRequirementType @default(CUSTOMER_DEFINED) @map("worker_req_type")
+  requiredWorkers       Int                   @default(1) @map("required_workers")
+  minimumWorkers        Int                   @default(1) @map("minimum_workers")
+  maximumWorkers        Int                   @default(10) @map("maximum_workers")
+  assignedWorkerCount   Int                   @default(0) @map("assigned_worker_count")
+  staffingStatus        StaffingStatus        @default(OPEN) @map("staffing_status")
+
+  status                String                @default("OPEN") @db.VarChar(20)
+  skills                Json
+
+  // Relations
+  applications          JobApplication[]
+  assignments           Assignment[]
+  teamInvitations       TeamInvitation[]
+  staffingRequests      StaffingRequest[]
+  conversations         Conversation[]
+
+  deletedAt             DateTime?             @map("deleted_at") @db.Timestamp(6)
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([status])
+  @@index([staffingStatus])
+  @@index([customerId])
+  @@index([preferredDate])
+  @@map("jobs")
+}

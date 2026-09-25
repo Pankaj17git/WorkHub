@@ -1,0 +1,14 @@
+enum UserRole {
+  CUSTOMER
+  WORKER
+  ADMIN
+  CONTRACTOR
+}
+
+model Role {
+  id    BigInt @id @default(autoincrement())
+  type  UserRole @default(CUSTOMER)   
+  users User[]
+
+  @@map("roles")
+}

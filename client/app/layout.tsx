@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Hanken_Grotesk, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
+import RouteNotice from "@/components/ui/RouteNotice";
+import { AuthProvider } from "@/context/AuthContext";
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -38,7 +41,12 @@ export default function RootLayout({
       className={`${hankenGrotesk.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#f8f9ff] text-[#0d1c2e]">
-        <AppShell>{children}</AppShell>
+        <Suspense fallback={null}>
+          <RouteNotice />
+        </Suspense>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

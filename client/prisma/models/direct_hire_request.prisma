@@ -1,0 +1,39 @@
+enum DirectHireStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+model DirectHireRequest {
+  id                 BigInt           @id @default(autoincrement())
+  customerId         BigInt           @map("customer_id")
+  customer           Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  workerId           BigInt           @map("worker_id")
+  worker             Worker           @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  serviceName        String?          @map("service_name") @db.VarChar(100)
+  addressId          BigInt?          @map("address_id")
+  address            Address?         @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  requestedDate      DateTime         @map("requested_date") @db.Date
+  requestedStartTime String           @map("requested_start_time") @db.VarChar(10)
+  requestedEndTime   String           @map("requested_end_time") @db.VarChar(10)
+
+  customerMessage    String?          @map("customer_message") @db.Text
+  proposedPrice      Decimal?         @map("proposed_price") @db.Decimal(10, 2)
+
+  status             DirectHireStatus @default(PENDING)
+  expiresAt          DateTime         @map("expires_at") @db.Timestamp(6)
+
+  assignment         Assignment?
+  conversations      Conversation[]
+
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([workerId, status])
+  @@index([customerId])
+  @@index([requestedDate])
+  @@map("direct_hire_requests")
+}

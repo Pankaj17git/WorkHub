@@ -1,34 +1,86 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react'; ;
 import { useRouter } from 'next/navigation';
 import { 
   Inbox, 
-  Clock, 
-  MapPin, 
-  CheckCircle2, 
-  Filter, 
-  ArrowLeft,
-  AlertCircle
 } from 'lucide-react';
 import JobRequestCard from '@/components/worker/JobRequestCard';
 import { MOCK_INCOMING_REQUESTS } from '@/data/mockWorkerData';
 import { WorkerJobRequest } from '@/types';
+import { getToken } from '@/lib/auth-client';
 
 export default function WorkerJobRequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<WorkerJobRequest[]>(MOCK_INCOMING_REQUESTS);
   const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'ACCEPTED'>('ALL');
+  const [loading, setLoading] = useState(false);
 
-  const handleAcceptJob = (id: string) => {
+  useEffect(() => {
+    const fetchInboundRequests = async () => {
+      const token = getToken();
+      if (!token) return;
+      setLoading(true)
+      try {
+        const res = await fetch('/api/direct-hire-requests', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const apiRequests = data.requests || data.data?.requests || [];
+
+          setRequests(apiRequests);
+        }
+      } catch (err) {
+        console.error('Failed to fetch direct hire requests:', err);
+      }
+      finally{
+        setLoading(false)
+      }
+    };
+    fetchInboundRequests();
+  }, []);
+
+  const handleAcceptJob = async (id: string) => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`/api/direct-hire-requests/${id}/accept`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const assignmentId = data.assignment?.id || data.data?.assignment?.id || id;
+        router.push(`/worker/jobs/${assignmentId}`);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to accept direct hire:', err);
+    }
+
+    // Local fallback
     setRequests((prev) =>
       prev.map((j) => (j.id === id ? { ...j, status: 'ACCEPTED' } : j))
     );
     router.push(`/worker/jobs/${id}`);
   };
 
-  const handleDeclineJob = (id: string) => {
+  const handleDeclineJob = async (id: string) => {
+    const token = getToken();
+    if (token) {
+      try {
+        await fetch(`/api/direct-hire-requests/${id}/decline`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err) {
+        console.error('Failed to decline direct hire:', err);
+      }
+    }
+
     setRequests((prev) => prev.filter((j) => j.id !== id));
   };
 
