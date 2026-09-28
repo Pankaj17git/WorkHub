@@ -12,7 +12,7 @@ model Worker {
   isVerified     Boolean   @default(false) @map("is_verified")
   hourlyRate     Decimal?  @map("hourly_rate") @db.Decimal(10, 2)
 
-  skills                    Skill[]
+  skills                    WorkerSkill[]
   services                  WorkerService[]
   availabilities            WorkerAvailability[]
   availabilityExceptions    WorkerAvailabilityException[]

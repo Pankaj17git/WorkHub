@@ -15,9 +15,19 @@ export async function GET(request: NextRequest) {
     };
 
     if (skill) {
+      const skillDetails = await prisma.skill.findFirst({
+        where: {
+          name: { contains: skill },
+          isCustom: false,
+        },
+      });
+
+      if (!skillDetails) {
+        return apiResponse.notFound("Skill not found");
+      }
       where.skills = {
         some: {
-          name: { contains: skill },
+          skillId: skillDetails.id,
         },
       };
     }
@@ -43,7 +53,11 @@ export async function GET(request: NextRequest) {
             status: true,
           },
         },
-        skills: true,
+        skills: {
+          include: {
+            skill: true,
+          },
+        },
         services: true,
         address: true,
         reviews: {
@@ -78,7 +92,7 @@ export async function GET(request: NextRequest) {
           bio: w.bio || "Experienced specialist offering top-rated home and maintenance services.",
           isVerified: w.isVerified,
           hourlyRate: w.hourlyRate ? Number(w.hourlyRate.toString()) : 299,
-          skills: w.skills.map((s) => s.name),
+          skills: w.skills.map((s) => s.skill.name),
           services: w.services.map((srv) => ({
             id: srv.id.toString(),
             name: srv.serviceName,

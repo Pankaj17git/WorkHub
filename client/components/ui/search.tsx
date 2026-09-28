@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, Suspense, useSyncExternalStore } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
-  ArrowUpDown,
   SlidersHorizontal,
   LayoutGrid,
   List,
@@ -24,8 +23,7 @@ import FilterSidebar from '@/components/marketplace/FilterSidebar';
 import JobSearchCard from '@/components/marketplace/JobSearchCard';
 import { MOCK_PROS, MOCK_JOB_POSTINGS, MockJobPosting } from '@/data/mockData';
 import { Professional } from '@/types';
-import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
-import api from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -63,9 +61,12 @@ function SearchContent() {
   // Data lists
   const [prosList, setProsList] = useState<Professional[]>(MOCK_PROS);
   const [jobsList, setJobsList] = useState<MockJobPosting[]>(MOCK_JOB_POSTINGS);
+  const { user } = useAuth();
+  console.log("this is the user", user)
 
   // Fetch real workers if available, fallback to mock
   useEffect(() => {
+
     fetch('/api/workers')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -373,36 +374,41 @@ function SearchContent() {
             {/* Mode Switcher Buttons */}
             <div className="pt-2">
               <div className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/80 border border-[#dbeafe] shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchMode('workers');
-                    handleReset();
-                  }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    searchMode === 'workers'
-                      ? 'bg-[#0051d5] text-white shadow-xs'
-                      : 'text-[#64748b] hover:text-[#091426]'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Find Workers</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchMode('jobs');
-                    handleReset();
-                  }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    searchMode === 'jobs'
-                      ? 'bg-[#0051d5] text-white shadow-xs'
-                      : 'text-[#64748b] hover:text-[#091426]'
-                  }`}
-                >
-                  <Briefcase className="w-3.5 h-3.5" />
-                  <span>Find Job Openings</span>
-                </button>
+                {
+                  user && user.role != "WORKER" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchMode('workers');
+                        handleReset();
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                        searchMode === 'workers'
+                          ? 'bg-[#0051d5] text-white shadow-xs'
+                          : 'text-[#64748b] hover:text-[#091426]'
+                      }`}
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Find Workers</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchMode('jobs');
+                        handleReset();
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                        searchMode === 'jobs'
+                          ? 'bg-[#0051d5] text-white shadow-xs'
+                          : 'text-[#64748b] hover:text-[#091426]'
+                      }`}
+                    >
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span>Find Job Openings</span>
+                    </button>
+                  )
+                }
               </div>
             </div>
           </div>
