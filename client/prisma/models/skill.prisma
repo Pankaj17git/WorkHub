@@ -1,12 +1,27 @@
 model Skill {
-  id        BigInt   @id @default(autoincrement())
-  workerId  BigInt   @map("worker_id")
-  worker    Worker   @relation(fields: [workerId], references: [id])
-  name      String   @db.VarChar(100)
+  id        BigInt       @id @default(autoincrement())
+  key       String       @unique @db.VarChar(100)
+  name      String       @db.VarChar(100)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  isCustom  Boolean      @default(false) @map("is_custom")
+  createdBy BigInt?      @map("created_by")
 
-  @@unique([workerId, name])
+  workers   WorkerSkill[]
+
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+
   @@index([name])
   @@map("skills")
+}
+
+model WorkerSkill {
+  workerId BigInt @map("worker_id")
+  skillId  BigInt @map("skill_id")
+
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  skill  Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([workerId, skillId])
+  @@index([skillId])
+  @@map("worker_skills")
 }
