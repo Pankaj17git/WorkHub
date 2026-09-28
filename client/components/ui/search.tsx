@@ -16,11 +16,13 @@ import {
   Sparkles,
   RefreshCw,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import ProCard from '@/components/marketplace/ProCard';
 import FilterSidebar from '@/components/marketplace/FilterSidebar';
 import JobSearchCard from '@/components/marketplace/JobSearchCard';
+import Pagination from '@/components/ui/Pagination';
 import { MOCK_PROS, MOCK_JOB_POSTINGS, MockJobPosting } from '@/data/mockData';
 import { Professional } from '@/types';
 import { useAuth } from '@/context/AuthContext';
@@ -32,13 +34,27 @@ function SearchContent() {
   const initialQuery = searchParams.get('q') || '';
   const initialCategory = searchParams.get('category') || '';
   const initialMode = searchParams.get('mode') === 'jobs' ? 'jobs' : 'workers';
+  const initialLocation = searchParams.get('city') || searchParams.get('location') || '';
+  const initialPage = Number(searchParams.get('page')) || 1;
+  const initialLimit = Number(searchParams.get('limit')) || 6;
 
   // Search Mode: 'workers' for customers finding pros, 'jobs' for workers finding openings
   const [searchMode, setSearchMode] = useState<'workers' | 'jobs'>(initialMode);
 
   // Query & Location (Location selected ONLY via sidebar!)
   const [query, setQuery] = useState(initialQuery);
-  const [selectedLocation, setSelectedLocation] = useState('Chandigarh');
+  const [selectedLocation, setSelectedLocation] = useState(initialLocation);
+
+  // Pagination states for Workers (server-side)
+  const [workerPage, setWorkerPage] = useState(initialPage);
+  const [workerLimit, setWorkerLimit] = useState(initialLimit);
+  const [workerTotal, setWorkerTotal] = useState(0);
+  const [workerTotalPages, setWorkerTotalPages] = useState(1);
+  const [isWorkersLoading, setIsWorkersLoading] = useState(false);
+
+  // Pagination states for Jobs (client-side)
+  const [jobPage, setJobPage] = useState(1);
+  const [jobLimit, setJobLimit] = useState(6);
 
   // Categories & Filters
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -59,37 +75,62 @@ function SearchContent() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Data lists
-  const [prosList, setProsList] = useState<Professional[]>(MOCK_PROS);
+  const [prosList, setProsList] = useState<Professional[]>([]);
   const [jobsList, setJobsList] = useState<MockJobPosting[]>(MOCK_JOB_POSTINGS);
   const { user } = useAuth();
-  console.log("this is the user", user)
 
-  // Fetch real workers if available, fallback to mock
+  // Fetch real workers with API parameters and pagination
   useEffect(() => {
+    let isCancelled = false;
+    setIsWorkersLoading(true);
 
-    fetch('/api/workers')
+    const params = new URLSearchParams();
+    params.set('page', String(workerPage));
+    params.set('limit', String(workerLimit));
+    if (query.trim()) params.set('q', query.trim());
+    if (selectedCategories.length > 0) {
+      params.set('skill', selectedCategories[0]);
+    }
+    if (selectedLocation && selectedLocation.trim() && !selectedLocation.toLowerCase().includes('all')) {
+      params.set('city', selectedLocation.trim());
+    }
+    if (sortBy && sortBy !== 'recommended') {
+      params.set('sort', sortBy);
+    }
+
+    fetch(`/api/workers?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.workers && data.workers.length > 0) {
-          const apiPros: Professional[] = data.workers.map((w: any) => ({
+        if (isCancelled) return;
+        const rawWorkers = data?.workers || data?.data || [];
+        if (rawWorkers.length > 0) {
+          const apiPros: Professional[] = rawWorkers.map((w: any) => ({
             id: `pro-${w.id}`,
             name: w.name,
             title: w.headline || 'Service Professional',
-            avatar: w.profileImage || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400&auto=format&fit=crop&q=80',
-            coverImage: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&auto=format&fit=crop&q=80',
-            category: w.skills[0] || 'Electricians',
+            avatar:
+              w.profileImage ||
+              'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400&auto=format&fit=crop&q=80',
+            coverImage:
+              'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&auto=format&fit=crop&q=80',
+            category: w.skills?.[0] || 'Electricians',
             location: w.address?.city ? `${w.address.city}` : 'Chandigarh',
             distanceKm: 3.0,
-            rating: w.rating || 4.9,
-            reviewCount: w.reviewCount || 24,
+            rating: w.rating || 4.8,
+            reviewCount: w.reviewCount || 12,
             completedJobs: 120,
             experienceYears: 6,
             hourlyRate: w.hourlyRate || 350,
             verified: w.isVerified ?? true,
             online: true,
             responseTimeMinutes: 15,
-            about: w.bio || 'Experienced verified service professional dedicated to high quality work.',
-            skills: w.skills && w.skills.length > 0 ? w.skills : ['Installation', 'Repairs', 'Maintenance'],
+            about:
+              w.bio ||
+              'Experienced verified service professional dedicated to high quality work.',
+            skills:
+              w.skills && w.skills.length > 0
+                ? w.skills
+                : ['Installation', 'Repairs', 'Maintenance'],
             services: (w.services || []).map((srv: any) => ({
               id: srv.id,
               name: srv.name,
@@ -101,16 +142,42 @@ function SearchContent() {
             badges: ['Verified Pro', 'Top Rated'],
           }));
 
-          setProsList((prev) => {
-            const existingIds = new Set(apiPros.map((p) => p.id));
-            const filteredMock = prev.filter((p) => !existingIds.has(p.id));
-            return [...apiPros, ...filteredMock];
-          });
+          setProsList(apiPros);
+          if (data?.meta) {
+            setWorkerTotal(data.meta.total);
+            setWorkerTotalPages(data.meta.totalPages);
+          }
+        } else {
+          setProsList([]);
+          if (data?.meta) {
+            setWorkerTotal(data.meta.total);
+            setWorkerTotalPages(data.meta.totalPages);
+          } else {
+            setWorkerTotal(0);
+            setWorkerTotalPages(1);
+          }
         }
       })
-      .catch((err) => console.error('Failed to load workers:', err));
+      .catch((err) => {
+        if (isCancelled) return;
+        console.error('Failed to load workers:', err);
+        setProsList(MOCK_PROS.slice(0, workerLimit));
+        setWorkerTotal(MOCK_PROS.length);
+        setWorkerTotalPages(Math.ceil(MOCK_PROS.length / workerLimit));
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsWorkersLoading(false);
+        }
+      });
 
-    // Fetch real jobs if available, fallback to mock
+    return () => {
+      isCancelled = true;
+    };
+  }, [workerPage, workerLimit, query, selectedCategories, selectedLocation, sortBy]);
+
+  // Fetch real jobs if available, fallback to mock
+  useEffect(() => {
     fetch('/api/jobs')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -121,7 +188,8 @@ function SearchContent() {
             title: j.title,
             category: j.serviceName || 'General Trade',
             customerName: j.customer?.name || 'Customer Request',
-            customerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+            customerAvatar:
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
             location: j.address?.city || 'Chandigarh',
             distanceKm: 3.5,
             postedAt: 'Just now',
@@ -137,7 +205,7 @@ function SearchContent() {
 
           setJobsList((prev) => {
             const existingIds = new Set(apiJobs.map((j) => j.id));
-            const filteredMock = prev.filter((j) => !existingIds.has(j.id));
+            const filteredMock = prev.filter((p) => !existingIds.has(p.id));
             return [...apiJobs, ...filteredMock];
           });
         }
@@ -150,6 +218,15 @@ function SearchContent() {
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
+    setWorkerPage(1);
+    setJobPage(1);
+  };
+
+  // Location select handler
+  const handleSelectLocation = (loc: string) => {
+    setSelectedLocation(loc);
+    setWorkerPage(1);
+    setJobPage(1);
   };
 
   // Experience toggle handler
@@ -163,6 +240,7 @@ function SearchContent() {
   const handleReset = () => {
     setQuery('');
     setSelectedCategories([]);
+    setSelectedLocation('');
     setAvailability('any');
     setSelectedExperience([]);
     setMinRating(0);
@@ -170,45 +248,14 @@ function SearchContent() {
     setJobStatus('ALL');
     setBudgetRange('ALL');
     setSortBy('recommended');
+    setWorkerPage(1);
+    setJobPage(1);
   };
 
   // Filtered Professionals (Customer Mode)
   const filteredPros = useMemo(() => {
     return prosList
       .filter((pro) => {
-        // Query search
-        if (query.trim()) {
-          const q = query.toLowerCase();
-          const matchName = pro.name.toLowerCase().includes(q);
-          const matchTitle = pro.title.toLowerCase().includes(q);
-          const matchCategory = pro.category.toLowerCase().includes(q);
-          const matchSkill = pro.skills.some((s) => s.toLowerCase().includes(q));
-          const matchBio = pro.about.toLowerCase().includes(q);
-          if (!matchName && !matchTitle && !matchCategory && !matchSkill && !matchBio) {
-            return false;
-          }
-        }
-
-        // Location filter (from sidebar)
-        if (selectedLocation.trim()) {
-          const loc = selectedLocation.toLowerCase();
-          const proLoc = pro.location.toLowerCase();
-          if (!proLoc.includes(loc) && !loc.includes(proLoc.split(',')[0].trim())) {
-            // If location is specific like 'Sector 22, Chandigarh', check both parts
-            const parts = loc.split(',').map((p) => p.trim());
-            const matchesAnyPart = parts.some((p) => proLoc.includes(p));
-            if (!matchesAnyPart) return false;
-          }
-        }
-
-        // Category filter
-        if (selectedCategories.length > 0) {
-          const matchesCategory = selectedCategories.some((cat) =>
-            pro.category.toLowerCase().includes(cat.toLowerCase())
-          );
-          if (!matchesCategory) return false;
-        }
-
         // Rating filter
         if (minRating > 0 && pro.rating < minRating) {
           return false;
@@ -235,20 +282,9 @@ function SearchContent() {
       .sort((a, b) => {
         if (sortBy === 'rating') return b.rating - a.rating;
         if (sortBy === 'distance') return a.distanceKm - b.distanceKm;
-        if (sortBy === 'price_low') return a.hourlyRate - b.hourlyRate;
-        if (sortBy === 'price_high') return b.hourlyRate - a.hourlyRate;
-        return b.completedJobs - a.completedJobs; // default recommended
+        return 0;
       });
-  }, [
-    prosList,
-    query,
-    selectedLocation,
-    selectedCategories,
-    minRating,
-    selectedExperience,
-    maxDistance,
-    sortBy,
-  ]);
+  }, [prosList, minRating, selectedExperience, maxDistance, sortBy]);
 
   // Filtered Job Openings (Worker Mode)
   const filteredJobs = useMemo(() => {
@@ -319,6 +355,12 @@ function SearchContent() {
     maxDistance,
     sortBy,
   ]);
+
+  // Paginated Job Openings (Worker Mode)
+  const paginatedJobs = useMemo(() => {
+    const start = (jobPage - 1) * jobLimit;
+    return filteredJobs.slice(start, start + jobLimit);
+  }, [filteredJobs, jobPage, jobLimit]);
 
   const hasActiveFilters =
     query !== '' ||
@@ -502,7 +544,14 @@ function SearchContent() {
 
       {/* 2. TOP SEARCH BAR (Location removed; strictly in sidebar as requested!) */}
       <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 m-0">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setWorkerPage(1);
+            setJobPage(1);
+          }}
+          className="flex flex-col md:flex-row items-stretch md:items-center gap-3"
+        >
           {/* Search Input */}
           <div className="relative flex-1">
             <input
@@ -513,7 +562,11 @@ function SearchContent() {
                   : 'Search by job title, trade skill or description...'
               }
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setWorkerPage(1);
+                setJobPage(1);
+              }}
               className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-[#ffffff] border border-[#cbd5e1] rounded-xl focus:outline-none focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5]/10 text-[#091426] placeholder-[#94a3b8] transition-all"
             />
             <Search className="w-4 h-4 text-[#64748b] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -521,8 +574,8 @@ function SearchContent() {
 
           {/* Search Action Button */}
           <button
-            type="button"
-            className="px-5 py-2.5 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+            type="submit"
+            className="px-5 py-2.5 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
             <Search className="w-3.5 h-3.5" />
             <span>Search</span>
@@ -535,7 +588,11 @@ function SearchContent() {
             </span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => {
+                setSortBy(e.target.value as any);
+                setWorkerPage(1);
+                setJobPage(1);
+              }}
               className="px-3 py-2 text-xs font-semibold text-[#091426] bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0051d5] cursor-pointer"
             >
               <option value="recommended">Most Recommended</option>
@@ -547,6 +604,7 @@ function SearchContent() {
 
             {/* Mobile Filter Drawer Button */}
             <button
+              type="button"
               onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
               className="lg:hidden p-2.5 rounded-xl bg-[#091426] text-white flex items-center gap-1.5 text-xs font-semibold"
             >
@@ -554,8 +612,7 @@ function SearchContent() {
               <span>Filters</span>
             </button>
           </div>
-        </div>
-
+        </form>
       </div>
 
       {/* Results Counter & View Switcher Row */}
@@ -565,12 +622,19 @@ function SearchContent() {
             <p>
               Showing{' '}
               <strong className="text-[#091426] font-geist font-bold">
-                {filteredPros.length}
+                {workerTotal > 0 ? workerTotal : filteredPros.length}
               </strong>{' '}
-              verified professionals in{' '}
-              <span className="font-semibold text-[#091426]">
-                {selectedLocation || 'all locations'}
-              </span>
+              verified professionals
+              {selectedLocation && selectedLocation.toLowerCase() !== 'all' ? (
+                <>
+                  {' '}in{' '}
+                  <span className="font-semibold text-[#091426]">
+                    {selectedLocation}
+                  </span>
+                </>
+              ) : (
+                ' across all locations'
+              )}
             </p>
           ) : (
             <p>
@@ -578,10 +642,17 @@ function SearchContent() {
               <strong className="text-[#091426] font-geist font-bold">
                 {filteredJobs.length}
               </strong>{' '}
-              active job openings in{' '}
-              <span className="font-semibold text-[#091426]">
-                {selectedLocation || 'all locations'}
-              </span>
+              active job openings
+              {selectedLocation && selectedLocation.toLowerCase() !== 'all' ? (
+                <>
+                  {' '}in{' '}
+                  <span className="font-semibold text-[#091426]">
+                    {selectedLocation}
+                  </span>
+                </>
+              ) : (
+                ' across all locations'
+              )}
             </p>
           )}
         </div>
@@ -635,7 +706,7 @@ function SearchContent() {
           <FilterSidebar
             searchMode={searchMode}
             selectedLocation={selectedLocation}
-            onSelectLocation={setSelectedLocation}
+            onSelectLocation={handleSelectLocation}
             selectedCategories={selectedCategories}
             onToggleCategory={handleToggleCategory}
             availability={availability}
@@ -660,7 +731,7 @@ function SearchContent() {
             <FilterSidebar
               searchMode={searchMode}
               selectedLocation={selectedLocation}
-              onSelectLocation={setSelectedLocation}
+              onSelectLocation={handleSelectLocation}
               selectedCategories={selectedCategories}
               onToggleCategory={handleToggleCategory}
               availability={availability}
@@ -684,7 +755,13 @@ function SearchContent() {
         <div className="lg:col-span-3">
           {searchMode === 'workers' ? (
             /* --- CUSTOMER MODE: WORKERS LIST / GRID --- */
-            filteredPros.length === 0 ? (
+            isWorkersLoading ? (
+              <div className="p-16 text-center bg-white border border-[#e2e8f0] rounded-2xl flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#0051d5]" />
+                <p className="text-sm font-semibold text-[#091426]">Loading specialists...</p>
+                <p className="text-xs text-[#64748b]">Fetching verified professionals with your filters</p>
+              </div>
+            ) : filteredPros.length === 0 ? (
               <div className="p-12 text-center bg-white border border-[#e2e8f0] rounded-2xl space-y-4">
                 <div className="w-16 h-16 rounded-full bg-[#eff6ff] text-[#0051d5] flex items-center justify-center mx-auto">
                   <Search className="w-8 h-8" />
@@ -703,17 +780,40 @@ function SearchContent() {
                   Reset All Filters
                 </button>
               </div>
-            ) : viewMode === 'list' ? (
-              <div className="space-y-4">
-                {filteredPros.map((pro) => (
-                  <ProCard key={pro.id} pro={pro} viewMode="list" />
-                ))}
-              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredPros.map((pro) => (
-                  <ProCard key={pro.id} pro={pro} viewMode="grid" />
-                ))}
+              <div className="space-y-6">
+                {viewMode === 'list' ? (
+                  <div className="space-y-4">
+                    {filteredPros.map((pro) => (
+                      <ProCard key={pro.id} pro={pro} viewMode="list" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filteredPros.map((pro) => (
+                      <ProCard key={pro.id} pro={pro} viewMode="grid" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Reusable Pagination for Workers */}
+                <Pagination
+                  currentPage={workerPage}
+                  totalPages={workerTotalPages}
+                  totalItems={workerTotal}
+                  pageSize={workerLimit}
+                  pageSizeOptions={[6, 12, 24, 48]}
+                  onPageChange={(newPage) => {
+                    setWorkerPage(newPage);
+                    window.scrollTo({ top: 320, behavior: 'smooth' });
+                  }}
+                  onPageSizeChange={(newLimit) => {
+                    setWorkerLimit(newLimit);
+                    setWorkerPage(1);
+                  }}
+                  isLoading={isWorkersLoading}
+                  itemLabel="professionals"
+                />
               </div>
             )
           ) : (
@@ -746,17 +846,39 @@ function SearchContent() {
                   </Link>
                 </div>
               </div>
-            ) : viewMode === 'list' ? (
-              <div className="space-y-4">
-                {filteredJobs.map((job) => (
-                  <JobSearchCard key={job.id} job={job} viewMode="list" />
-                ))}
-              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredJobs.map((job) => (
-                  <JobSearchCard key={job.id} job={job} viewMode="grid" />
-                ))}
+              <div className="space-y-6">
+                {viewMode === 'list' ? (
+                  <div className="space-y-4">
+                    {paginatedJobs.map((job) => (
+                      <JobSearchCard key={job.id} job={job} viewMode="list" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {paginatedJobs.map((job) => (
+                      <JobSearchCard key={job.id} job={job} viewMode="grid" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Reusable Pagination for Jobs */}
+                <Pagination
+                  currentPage={jobPage}
+                  totalPages={Math.ceil(filteredJobs.length / jobLimit) || 1}
+                  totalItems={filteredJobs.length}
+                  pageSize={jobLimit}
+                  pageSizeOptions={[6, 12, 24]}
+                  onPageChange={(newPage) => {
+                    setJobPage(newPage);
+                    window.scrollTo({ top: 320, behavior: 'smooth' });
+                  }}
+                  onPageSizeChange={(newLimit) => {
+                    setJobLimit(newLimit);
+                    setJobPage(1);
+                  }}
+                  itemLabel="job openings"
+                />
               </div>
             )
           )}

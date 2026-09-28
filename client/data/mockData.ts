@@ -1,8 +1,8 @@
 import { Professional, Category } from '../types';
 
 export const MOCK_CATEGORIES: Category[] = [
-  { id: '1', name: 'Electricians', slug: 'electricians', iconName: 'Zap', proCount: 142, startingPrice: 299, popular: true },
-  { id: '2', name: 'Plumbers', slug: 'plumbers', iconName: 'Wrench', proCount: 98, startingPrice: 249, popular: true },
+  { id: '1', name: 'Electricians', slug: 'electrician', iconName: 'Zap', proCount: 142, startingPrice: 299, popular: true },
+  { id: '2', name: 'Plumbers', slug: 'plumber', iconName: 'Wrench', proCount: 98, startingPrice: 249, popular: true },
   { id: '3', name: 'AC & Appliance Repair', slug: 'appliance-repair', iconName: 'Wind', proCount: 84, startingPrice: 399, popular: true },
   { id: '4', name: 'Carpenters', slug: 'carpenters', iconName: 'Hammer', proCount: 65, startingPrice: 349 },
   { id: '5', name: 'Painters', slug: 'painters', iconName: 'Paintbrush', proCount: 52, startingPrice: 499 },
