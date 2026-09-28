@@ -22,6 +22,7 @@ import {
 import { MOCK_PROS } from '@/data/mockData';
 import StatusTimeline from '@/components/booking/StatusTimeline';
 import { getToken } from '@/lib/auth-client';
+import { JobStatus } from '@/generated/prisma/enums';
 
 export default function BookingTrackPage() {
   const params = useParams();
