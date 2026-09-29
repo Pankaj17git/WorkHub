@@ -9,7 +9,7 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`;
 
     console.log("✅ MySQL connection successful");
-
+    console.log("✅l");
     return NextResponse.json({
       success: true,
       database: "connected",
