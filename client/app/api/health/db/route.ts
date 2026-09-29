@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { adapter } from "next/dist/server/web/adapter";
 
 export async function GET() {
   try {
@@ -12,6 +13,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       database: "connected",
+      addaptor: adapter
     });
   } catch (error: unknown) {
     const prismaError = error as { message?: string; code?: string; cause?: unknown };
@@ -23,6 +25,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
+        addaptor: adapter,
         success: false,
         database: "disconnected",
         error: prismaError?.message ?? "Unknown database error",
