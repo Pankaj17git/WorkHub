@@ -4,7 +4,6 @@ import { Prisma } from "@/generated/prisma/client";
 import { apiResponse } from "@/lib/apiResponse";
 import { status as Status } from "@/constants/statusCodes";
 import { createPaginatedResponse, getPagination } from "@/services/pagination.service";
-import { createPaginatedResponse, getPagination } from "@/services/pagination.service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,19 +142,14 @@ export async function GET(request: NextRequest) {
         where,
       }),
     ]);
+    
+    const serializedWorkers = workers.map((w) => {
+      const ratingCount = w.reviews.length;
 
-    const serializedWorkers = workers.map((w) => {
-      const ratingCount = w.reviews.length;
       const avgRating =
         ratingCount > 0
           ? w.reviews.reduce((acc, r) => acc + r.rating, 0) / ratingCount
-          : 4.8; // default benchmark rating
-    const serializedWorkers = workers.map((w) => {
-      const ratingCount = w.reviews.length;
-      const avgRating =
-        ratingCount > 0
-          ? w.reviews.reduce((acc, r) => acc + r.rating, 0) / ratingCount
-          : 4.8; // default benchmark rating
+          : 4.8;
 
       return {
         id: w.id.toString(),
@@ -167,7 +161,9 @@ export async function GET(request: NextRequest) {
           w.user.profileImage ||
           "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=160&auto=format&fit=crop&q=80",
         headline: w.headline || "Verified Service Professional",
-        bio: w.bio || "Experienced specialist offering top-rated home and maintenance services.",
+        bio:
+          w.bio ||
+          "Experienced specialist offering top-rated home and maintenance services.",
         isVerified: w.isVerified,
         hourlyRate: w.hourlyRate ? Number(w.hourlyRate.toString()) : 299,
         skills: w.skills.map((s) => s.skill.name),
@@ -197,7 +193,7 @@ export async function GET(request: NextRequest) {
       },
       Status.OK
     );
-  } catch (error) {
+  } catch(error) {
     console.error("Failed to list workers:", error);
     const message = error instanceof Error ? error.message : "Failed to list workers";
     return apiResponse.internalError(message);

@@ -1,0 +1,37 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { adapter } from "next/dist/server/web/adapter";
+
+export async function GET() {
+  try {
+    console.log("🔌 Testing MySQL connection...");
+
+    await prisma.$queryRaw`SELECT 1`;
+
+    console.log("✅ MySQL connection successful");
+    console.log("✅l");
+    return NextResponse.json({
+      success: true,
+      database: "connected",
+      addaptor: adapter
+    });
+  } catch (error: unknown) {
+    const prismaError = error as { message?: string; code?: string; cause?: unknown };
+    console.error("❌ MySQL connection failed");
+    console.error("Error:", error);
+    console.error("Message:", prismaError?.message);
+    console.error("Code:", prismaError?.code);
+    console.error("Cause:", prismaError?.cause);
+
+    return NextResponse.json(
+      {
+        addaptor: adapter,
+        success: false,
+        database: "disconnected",
+        error: prismaError?.message ?? "Unknown database error",
+        code: prismaError?.code ?? null,
+      },
+      { status: 500 }
+    );
+  }
+}
