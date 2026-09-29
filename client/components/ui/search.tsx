@@ -24,7 +24,19 @@ import FilterSidebar from '@/components/marketplace/FilterSidebar';
 import JobSearchCard from '@/components/marketplace/JobSearchCard';
 import Pagination from '@/components/ui/Pagination';
 import { MOCK_PROS, MOCK_JOB_POSTINGS, MockJobPosting } from '@/data/mockData';
-import { Professional } from '@/types';
+import {
+  Professional,
+  RawWorkerItem,
+  RawWorkerService,
+  RawJobPosting,
+  JobSkillItem,
+  SearchSortOption,
+  SearchAvailability,
+  SearchMode,
+  BudgetRange,
+  JobFilterStatus,
+  ViewMode,
+} from '@/types';
 import { useAuth } from '@/context/AuthContext';
 
 function SearchContent() {
@@ -32,14 +44,14 @@ function SearchContent() {
 
   // Initial params
   const initialQuery = searchParams.get('q') || '';
-  const initialCategory = searchParams.get('category') || '';
+  const initialCategory = searchParams.get('category') || searchParams.get('skill') || '';
   const initialMode = searchParams.get('mode') === 'jobs' ? 'jobs' : 'workers';
   const initialLocation = searchParams.get('city') || searchParams.get('location') || '';
   const initialPage = Number(searchParams.get('page')) || 1;
   const initialLimit = Number(searchParams.get('limit')) || 6;
 
   // Search Mode: 'workers' for customers finding pros, 'jobs' for workers finding openings
-  const [searchMode, setSearchMode] = useState<'workers' | 'jobs'>(initialMode);
+  const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
 
   // Query & Location (Location selected ONLY via sidebar!)
   const [query, setQuery] = useState(initialQuery);
@@ -60,18 +72,18 @@ function SearchContent() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialCategory && initialCategory !== 'all' ? [initialCategory] : []
   );
-  const [availability, setAvailability] = useState<'any' | 'today' | 'this_week' | 'custom'>('any');
+  const [availability, setAvailability] = useState<SearchAvailability>('any');
   const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
   const [minRating, setMinRating] = useState<number>(0);
   const [maxDistance, setMaxDistance] = useState<number>(25);
 
   // Job Specific Filters
-  const [jobStatus, setJobStatus] = useState<'ALL' | 'OPEN' | 'URGENT'>('ALL');
-  const [budgetRange, setBudgetRange] = useState<'ALL' | 'LOW' | 'MID' | 'HIGH'>('ALL');
+  const [jobStatus, setJobStatus] = useState<JobFilterStatus>('ALL');
+  const [budgetRange, setBudgetRange] = useState<BudgetRange>('ALL');
 
   // Display & Sorting
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [sortBy, setSortBy] = useState<'recommended' | 'rating' | 'distance' | 'price_low' | 'price_high' | 'recent'>('recommended');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [sortBy, setSortBy] = useState<SearchSortOption>('recommended');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Data lists
@@ -82,29 +94,32 @@ function SearchContent() {
   // Fetch real workers with API parameters and pagination
   useEffect(() => {
     let isCancelled = false;
-    setIsWorkersLoading(true);
 
-    const params = new URLSearchParams();
-    params.set('page', String(workerPage));
-    params.set('limit', String(workerLimit));
-    if (query.trim()) params.set('q', query.trim());
-    if (selectedCategories.length > 0) {
-      params.set('skill', selectedCategories[0]);
-    }
-    if (selectedLocation && selectedLocation.trim() && !selectedLocation.toLowerCase().includes('all')) {
-      params.set('city', selectedLocation.trim());
-    }
-    if (sortBy && sortBy !== 'recommended') {
-      params.set('sort', sortBy);
-    }
+    async function fetchWorkers() {
+      setIsWorkersLoading(true);
 
-    fetch(`/api/workers?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
+      const params = new URLSearchParams();
+      params.set('page', String(workerPage));
+      params.set('limit', String(workerLimit));
+      if (query.trim()) params.set('q', query.trim());
+      if (selectedCategories.length > 0) {
+        params.set('skill', selectedCategories.join(','));
+      }
+      if (selectedLocation && selectedLocation.trim() && !selectedLocation.toLowerCase().includes('all')) {
+        params.set('city', selectedLocation.trim());
+      }
+      if (sortBy && sortBy !== 'recommended') {
+        params.set('sort', sortBy);
+      }
+
+      try {
+        const res = await fetch(`/api/workers?${params.toString()}`);
+        const data = res.ok ? await res.json() : null;
         if (isCancelled) return;
-        const rawWorkers = data?.workers || data?.data || [];
+
+        const rawWorkers: RawWorkerItem[] = data?.data?.workers || data?.data || [];
         if (rawWorkers.length > 0) {
-          const apiPros: Professional[] = rawWorkers.map((w: any) => ({
+          const apiPros: Professional[] = rawWorkers.map((w: RawWorkerItem) => ({
             id: `pro-${w.id}`,
             name: w.name,
             title: w.headline || 'Service Professional',
@@ -131,12 +146,12 @@ function SearchContent() {
               w.skills && w.skills.length > 0
                 ? w.skills
                 : ['Installation', 'Repairs', 'Maintenance'],
-            services: (w.services || []).map((srv: any) => ({
+            services: (w.services || []).map((srv: RawWorkerService) => ({
               id: srv.id,
-              name: srv.name,
+              name: srv.name || srv.serviceName || 'Service',
               description: srv.description || 'Professional service',
               price: srv.price || 350,
-              durationMinutes: 45,
+              durationMinutes: srv.durationMinutes || 45,
             })),
             reviews: [],
             badges: ['Verified Pro', 'Top Rated'],
@@ -157,20 +172,20 @@ function SearchContent() {
             setWorkerTotalPages(1);
           }
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (isCancelled) return;
         console.error('Failed to load workers:', err);
         setProsList(MOCK_PROS.slice(0, workerLimit));
         setWorkerTotal(MOCK_PROS.length);
         setWorkerTotalPages(Math.ceil(MOCK_PROS.length / workerLimit));
-      })
-      .finally(() => {
+      } finally {
         if (!isCancelled) {
           setIsWorkersLoading(false);
         }
-      });
+      }
+    }
 
+    void fetchWorkers();
     return () => {
       isCancelled = true;
     };
@@ -178,28 +193,34 @@ function SearchContent() {
 
   // Fetch real jobs if available, fallback to mock
   useEffect(() => {
-    fetch('/api/jobs')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        const rawJobs = data?.jobs || data?.data?.jobs;
+    let isCancelled = false;
+
+    async function fetchJobs() {
+      try {
+        const res = await fetch('/api/jobs');
+        const data = res.ok ? await res.json() : null;
+        if (isCancelled) return;
+
+        const rawJobs: RawJobPosting[] = data?.jobs || data?.data?.jobs || [];
         if (rawJobs && rawJobs.length > 0) {
-          const apiJobs: MockJobPosting[] = rawJobs.map((j: any) => ({
+          const apiJobs: MockJobPosting[] = rawJobs.map((j: RawJobPosting) => ({
             id: j.id,
             title: j.title,
             category: j.serviceName || 'General Trade',
-            customerName: j.customer?.name || 'Customer Request',
+            customerName: j.customer?.name || j.customerName || 'Customer Request',
             customerAvatar:
+              j.customerAvatar ||
               'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-            location: j.address?.city || 'Chandigarh',
-            distanceKm: 3.5,
-            postedAt: 'Just now',
+            location: j.address?.city || j.location || 'Chandigarh',
+            distanceKm: j.distanceKm || 3.5,
+            postedAt: j.postedAt || 'Just now',
             status: j.status === 'OPEN' ? 'OPEN' : 'IN_PROGRESS',
-            minBudget: j.minAmount || 500,
-            maxBudget: j.maxAmount || 1500,
+            minBudget: j.minAmount || j.minBudget || 500,
+            maxBudget: j.maxAmount || j.maxBudget || 1500,
             requiredWorkers: j.requiredWorkers || 1,
             description: j.description || 'No description provided.',
             skills: Array.isArray(j.skills)
-              ? j.skills.map((s: any) => (typeof s === 'string' ? s : s.name))
+              ? j.skills.map((s: JobSkillItem) => (typeof s === 'string' ? s : s.name))
               : ['Repairs', 'Maintenance'],
           }));
 
@@ -209,8 +230,17 @@ function SearchContent() {
             return [...apiJobs, ...filteredMock];
           });
         }
-      })
-      .catch((err) => console.error('Failed to load jobs:', err));
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('Failed to load jobs:', err);
+        }
+      }
+    }
+
+    void fetchJobs();
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   // Category toggle handler
@@ -313,9 +343,17 @@ function SearchContent() {
 
         // Category filter
         if (selectedCategories.length > 0) {
-          const matchesCategory = selectedCategories.some((cat) =>
-            job.category.toLowerCase().includes(cat.toLowerCase())
-          );
+          const matchesCategory = selectedCategories.some((cat) => {
+            const c = cat.toLowerCase();
+            const cFormatted = c.replace(/_/g, ' ');
+            const jobCat = (job.category || '').toLowerCase();
+            const matchesCat = jobCat.includes(c) || jobCat.includes(cFormatted);
+            const matchesSkill = (job.skills || []).some((s) => {
+              const sLow = s.toLowerCase();
+              return sLow.includes(c) || sLow.includes(cFormatted);
+            });
+            return matchesCat || matchesSkill;
+          });
           if (!matchesCategory) return false;
         }
 
@@ -589,7 +627,7 @@ function SearchContent() {
             <select
               value={sortBy}
               onChange={(e) => {
-                setSortBy(e.target.value as any);
+                setSortBy(e.target.value as SearchSortOption);
                 setWorkerPage(1);
                 setJobPage(1);
               }}

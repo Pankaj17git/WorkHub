@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "node scripts/migrate.mjs && NODE_ENV=production tsx server.js",
     "lint": "eslint",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.9.1",

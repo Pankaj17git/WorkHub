@@ -1,5 +1,6 @@
 import React from 'react';
-import { CheckCircle2, Clock, Truck, PlayCircle, CheckCheck } from 'lucide-react';
+import { CheckCircle2, Clock, Truck, PlayCircle } from 'lucide-react';
+import { BookingTimelineStatus } from '@/types';
 
 interface Step {
   id: string;
@@ -10,7 +11,7 @@ interface Step {
 }
 
 interface StatusTimelineProps {
-  currentStatus: 'CONFIRMED' | 'PRO_ASSIGNED' | 'ON_THE_WAY' | 'IN_PROGRESS' | 'COMPLETED';
+  currentStatus: BookingTimelineStatus;
 }
 
 export default function StatusTimeline({ currentStatus }: StatusTimelineProps) {

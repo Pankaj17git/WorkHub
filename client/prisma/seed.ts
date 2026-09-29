@@ -580,7 +580,7 @@ async function main() {
       },
     });
 
-    let customer = await prisma.customer.findUnique({
+    const customer = await prisma.customer.findUnique({
       where: { userId: user.id },
       include: { address: true },
     });
@@ -704,6 +704,9 @@ async function main() {
           isVerified: true,
           hourlyRate: w.hourlyRate,
         },
+        include: {
+          address: true,
+        },
       });
     } else {
       worker = await prisma.worker.update({
@@ -715,6 +718,9 @@ async function main() {
           portfolio: w.portfolio,
           isVerified: true,
           hourlyRate: w.hourlyRate,
+        },
+        include: {
+          address: true,
         },
       });
     }

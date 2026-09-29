@@ -15,9 +15,9 @@ import {
   Wind,
   Hammer,
   Paintbrush,
-  ShieldCheck,
 } from 'lucide-react';
 import { MockJobPosting } from '@/data/mockData';
+import { JobSkillItem } from '@/types';
 
 interface JobSearchCardProps {
   job: MockJobPosting;
@@ -40,9 +40,9 @@ export default function JobSearchCard({
   const [isFavorite, setIsFavorite] = useState(false);
 
   const isUrgent = job.status === 'URGENT';
-  const minPrice = job.minBudget || job.minAmount || 500;
-  const maxPrice = job.maxBudget || job.maxAmount || 1500;
-  const city = job.location || job.address?.city || 'Chandigarh';
+  const minPrice = job.minBudget || 500;
+  const maxPrice = job.maxBudget || 1500;
+  const city = job.location || 'Chandigarh';
   const distance = job.distanceKm || 2.5;
   const workers = job.requiredWorkers || 1;
   const postedTime = job.postedAt || 'Recently';
@@ -82,7 +82,7 @@ export default function JobSearchCard({
               <Link href={`/jobs/${job.id}`}>{job.title}</Link>
             </h3>
             <p className="text-xs font-semibold text-[#0051d5] mt-0.5">
-              {job.category || job.serviceName || 'General Trade'}
+              {job.category || 'General Trade'}
             </p>
           </div>
 
@@ -166,7 +166,7 @@ export default function JobSearchCard({
             </Link>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[#0051d5] mt-0.5">
-            <span>{job.category || job.serviceName || 'General Maintenance'}</span>
+            <span>{job.category || 'General Maintenance'}</span>
             {job.customerName && (
               <>
                 <span className="text-[#cbd5e1]">•</span>
@@ -202,7 +202,7 @@ export default function JobSearchCard({
         {/* Required Skills Chips */}
         {job.skills && Array.isArray(job.skills) && job.skills.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap pt-1.5">
-            {job.skills.slice(0, 4).map((s: any, idx: number) => {
+            {job.skills.slice(0, 4).map((s: JobSkillItem, idx: number) => {
               const name = typeof s === 'string' ? s : s.name;
               return (
                 <span
