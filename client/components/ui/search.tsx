@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   SlidersHorizontal,
@@ -17,11 +19,13 @@ import {
   RefreshCw,
   Plus,
   Loader2,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import ProCard from '@/components/marketplace/ProCard';
 import FilterSidebar from '@/components/marketplace/FilterSidebar';
 import JobSearchCard from '@/components/marketplace/JobSearchCard';
+import Pagination from '@/components/ui/Pagination';
 import Pagination from '@/components/ui/Pagination';
 import { MOCK_PROS, MOCK_JOB_POSTINGS, MockJobPosting } from '@/data/mockData';
 import {
@@ -49,12 +53,27 @@ function SearchContent() {
   const initialLocation = searchParams.get('city') || searchParams.get('location') || '';
   const initialPage = Number(searchParams.get('page')) || 1;
   const initialLimit = Number(searchParams.get('limit')) || 6;
+  const initialLocation = searchParams.get('city') || searchParams.get('location') || '';
+  const initialPage = Number(searchParams.get('page')) || 1;
+  const initialLimit = Number(searchParams.get('limit')) || 6;
 
   // Search Mode: 'workers' for customers finding pros, 'jobs' for workers finding openings
   const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
 
   // Query & Location (Location selected ONLY via sidebar!)
   const [query, setQuery] = useState(initialQuery);
+  const [selectedLocation, setSelectedLocation] = useState(initialLocation);
+
+  // Pagination states for Workers (server-side)
+  const [workerPage, setWorkerPage] = useState(initialPage);
+  const [workerLimit, setWorkerLimit] = useState(initialLimit);
+  const [workerTotal, setWorkerTotal] = useState(0);
+  const [workerTotalPages, setWorkerTotalPages] = useState(1);
+  const [isWorkersLoading, setIsWorkersLoading] = useState(false);
+
+  // Pagination states for Jobs (client-side)
+  const [jobPage, setJobPage] = useState(1);
+  const [jobLimit, setJobLimit] = useState(6);
   const [selectedLocation, setSelectedLocation] = useState(initialLocation);
 
   // Pagination states for Workers (server-side)
@@ -88,9 +107,12 @@ function SearchContent() {
 
   // Data lists
   const [prosList, setProsList] = useState<Professional[]>([]);
+  const [prosList, setProsList] = useState<Professional[]>([]);
   const [jobsList, setJobsList] = useState<MockJobPosting[]>(MOCK_JOB_POSTINGS);
   const { user } = useAuth();
+  const { user } = useAuth();
 
+  // Fetch real workers with API parameters and pagination
   // Fetch real workers with API parameters and pagination
   useEffect(() => {
     let isCancelled = false;
@@ -129,8 +151,16 @@ function SearchContent() {
             coverImage:
               'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&auto=format&fit=crop&q=80',
             category: w.skills?.[0] || 'Electricians',
+            avatar:
+              w.profileImage ||
+              'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400&auto=format&fit=crop&q=80',
+            coverImage:
+              'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&auto=format&fit=crop&q=80',
+            category: w.skills?.[0] || 'Electricians',
             location: w.address?.city ? `${w.address.city}` : 'Chandigarh',
             distanceKm: 3.0,
+            rating: w.rating || 4.8,
+            reviewCount: w.reviewCount || 12,
             rating: w.rating || 4.8,
             reviewCount: w.reviewCount || 12,
             completedJobs: 120,
@@ -227,6 +257,7 @@ function SearchContent() {
           setJobsList((prev) => {
             const existingIds = new Set(apiJobs.map((j) => j.id));
             const filteredMock = prev.filter((p) => !existingIds.has(p.id));
+            const filteredMock = prev.filter((p) => !existingIds.has(p.id));
             return [...apiJobs, ...filteredMock];
           });
         }
@@ -257,6 +288,15 @@ function SearchContent() {
     setSelectedLocation(loc);
     setWorkerPage(1);
     setJobPage(1);
+    setWorkerPage(1);
+    setJobPage(1);
+  };
+
+  // Location select handler
+  const handleSelectLocation = (loc: string) => {
+    setSelectedLocation(loc);
+    setWorkerPage(1);
+    setJobPage(1);
   };
 
   // Experience toggle handler
@@ -271,6 +311,7 @@ function SearchContent() {
     setQuery('');
     setSelectedCategories([]);
     setSelectedLocation('');
+    setSelectedLocation('');
     setAvailability('any');
     setSelectedExperience([]);
     setMinRating(0);
@@ -278,6 +319,8 @@ function SearchContent() {
     setJobStatus('ALL');
     setBudgetRange('ALL');
     setSortBy('recommended');
+    setWorkerPage(1);
+    setJobPage(1);
     setWorkerPage(1);
     setJobPage(1);
   };
@@ -313,7 +356,9 @@ function SearchContent() {
         if (sortBy === 'rating') return b.rating - a.rating;
         if (sortBy === 'distance') return a.distanceKm - b.distanceKm;
         return 0;
+        return 0;
       });
+  }, [prosList, minRating, selectedExperience, maxDistance, sortBy]);
   }, [prosList, minRating, selectedExperience, maxDistance, sortBy]);
 
   // Filtered Job Openings (Worker Mode)
@@ -400,6 +445,12 @@ function SearchContent() {
     return filteredJobs.slice(start, start + jobLimit);
   }, [filteredJobs, jobPage, jobLimit]);
 
+  // Paginated Job Openings (Worker Mode)
+  const paginatedJobs = useMemo(() => {
+    const start = (jobPage - 1) * jobLimit;
+    return filteredJobs.slice(start, start + jobLimit);
+  }, [filteredJobs, jobPage, jobLimit]);
+
   const hasActiveFilters =
     query !== '' ||
     selectedCategories.length > 0 ||
@@ -454,6 +505,41 @@ function SearchContent() {
             {/* Mode Switcher Buttons */}
             <div className="pt-2">
               <div className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/80 border border-[#dbeafe] shadow-2xs">
+                {
+                  user && user.role != "WORKER" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchMode('workers');
+                        handleReset();
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                        searchMode === 'workers'
+                          ? 'bg-[#0051d5] text-white shadow-xs'
+                          : 'text-[#64748b] hover:text-[#091426]'
+                      }`}
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Find Workers</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchMode('jobs');
+                        handleReset();
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                        searchMode === 'jobs'
+                          ? 'bg-[#0051d5] text-white shadow-xs'
+                          : 'text-[#64748b] hover:text-[#091426]'
+                      }`}
+                    >
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span>Find Job Openings</span>
+                    </button>
+                  )
+                }
                 {
                   user && user.role != "WORKER" ? (
                     <button
@@ -590,6 +676,14 @@ function SearchContent() {
           }}
           className="flex flex-col md:flex-row items-stretch md:items-center gap-3"
         >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setWorkerPage(1);
+            setJobPage(1);
+          }}
+          className="flex flex-col md:flex-row items-stretch md:items-center gap-3"
+        >
           {/* Search Input */}
           <div className="relative flex-1">
             <input
@@ -605,6 +699,11 @@ function SearchContent() {
                 setWorkerPage(1);
                 setJobPage(1);
               }}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setWorkerPage(1);
+                setJobPage(1);
+              }}
               className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-[#ffffff] border border-[#cbd5e1] rounded-xl focus:outline-none focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5]/10 text-[#091426] placeholder-[#94a3b8] transition-all"
             />
             <Search className="w-4 h-4 text-[#64748b] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -612,6 +711,8 @@ function SearchContent() {
 
           {/* Search Action Button */}
           <button
+            type="submit"
+            className="px-5 py-2.5 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             type="submit"
             className="px-5 py-2.5 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
@@ -643,6 +744,7 @@ function SearchContent() {
             {/* Mobile Filter Drawer Button */}
             <button
               type="button"
+              type="button"
               onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
               className="lg:hidden p-2.5 rounded-xl bg-[#091426] text-white flex items-center gap-1.5 text-xs font-semibold"
             >
@@ -650,6 +752,7 @@ function SearchContent() {
               <span>Filters</span>
             </button>
           </div>
+        </form>
         </form>
       </div>
 
@@ -661,7 +764,19 @@ function SearchContent() {
               Showing{' '}
               <strong className="text-[#091426] font-geist font-bold">
                 {workerTotal > 0 ? workerTotal : filteredPros.length}
+                {workerTotal > 0 ? workerTotal : filteredPros.length}
               </strong>{' '}
+              verified professionals
+              {selectedLocation && selectedLocation.toLowerCase() !== 'all' ? (
+                <>
+                  {' '}in{' '}
+                  <span className="font-semibold text-[#091426]">
+                    {selectedLocation}
+                  </span>
+                </>
+              ) : (
+                ' across all locations'
+              )}
               verified professionals
               {selectedLocation && selectedLocation.toLowerCase() !== 'all' ? (
                 <>
@@ -680,6 +795,17 @@ function SearchContent() {
               <strong className="text-[#091426] font-geist font-bold">
                 {filteredJobs.length}
               </strong>{' '}
+              active job openings
+              {selectedLocation && selectedLocation.toLowerCase() !== 'all' ? (
+                <>
+                  {' '}in{' '}
+                  <span className="font-semibold text-[#091426]">
+                    {selectedLocation}
+                  </span>
+                </>
+              ) : (
+                ' across all locations'
+              )}
               active job openings
               {selectedLocation && selectedLocation.toLowerCase() !== 'all' ? (
                 <>
@@ -745,6 +871,7 @@ function SearchContent() {
             searchMode={searchMode}
             selectedLocation={selectedLocation}
             onSelectLocation={handleSelectLocation}
+            onSelectLocation={handleSelectLocation}
             selectedCategories={selectedCategories}
             onToggleCategory={handleToggleCategory}
             availability={availability}
@@ -769,6 +896,7 @@ function SearchContent() {
             <FilterSidebar
               searchMode={searchMode}
               selectedLocation={selectedLocation}
+              onSelectLocation={handleSelectLocation}
               onSelectLocation={handleSelectLocation}
               selectedCategories={selectedCategories}
               onToggleCategory={handleToggleCategory}
@@ -800,6 +928,13 @@ function SearchContent() {
                 <p className="text-xs text-[#64748b]">Fetching verified professionals with your filters</p>
               </div>
             ) : filteredPros.length === 0 ? (
+            isWorkersLoading ? (
+              <div className="p-16 text-center bg-white border border-[#e2e8f0] rounded-2xl flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#0051d5]" />
+                <p className="text-sm font-semibold text-[#091426]">Loading specialists...</p>
+                <p className="text-xs text-[#64748b]">Fetching verified professionals with your filters</p>
+              </div>
+            ) : filteredPros.length === 0 ? (
               <div className="p-12 text-center bg-white border border-[#e2e8f0] rounded-2xl space-y-4">
                 <div className="w-16 h-16 rounded-full bg-[#eff6ff] text-[#0051d5] flex items-center justify-center mx-auto">
                   <Search className="w-8 h-8" />
@@ -818,6 +953,40 @@ function SearchContent() {
                   Reset All Filters
                 </button>
               </div>
+            ) : (
+              <div className="space-y-6">
+                {viewMode === 'list' ? (
+                  <div className="space-y-4">
+                    {filteredPros.map((pro) => (
+                      <ProCard key={pro.id} pro={pro} viewMode="list" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filteredPros.map((pro) => (
+                      <ProCard key={pro.id} pro={pro} viewMode="grid" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Reusable Pagination for Workers */}
+                <Pagination
+                  currentPage={workerPage}
+                  totalPages={workerTotalPages}
+                  totalItems={workerTotal}
+                  pageSize={workerLimit}
+                  pageSizeOptions={[6, 12, 24, 48]}
+                  onPageChange={(newPage) => {
+                    setWorkerPage(newPage);
+                    window.scrollTo({ top: 320, behavior: 'smooth' });
+                  }}
+                  onPageSizeChange={(newLimit) => {
+                    setWorkerLimit(newLimit);
+                    setWorkerPage(1);
+                  }}
+                  isLoading={isWorkersLoading}
+                  itemLabel="professionals"
+                />
             ) : (
               <div className="space-y-6">
                 {viewMode === 'list' ? (
@@ -884,6 +1053,39 @@ function SearchContent() {
                   </Link>
                 </div>
               </div>
+            ) : (
+              <div className="space-y-6">
+                {viewMode === 'list' ? (
+                  <div className="space-y-4">
+                    {paginatedJobs.map((job) => (
+                      <JobSearchCard key={job.id} job={job} viewMode="list" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {paginatedJobs.map((job) => (
+                      <JobSearchCard key={job.id} job={job} viewMode="grid" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Reusable Pagination for Jobs */}
+                <Pagination
+                  currentPage={jobPage}
+                  totalPages={Math.ceil(filteredJobs.length / jobLimit) || 1}
+                  totalItems={filteredJobs.length}
+                  pageSize={jobLimit}
+                  pageSizeOptions={[6, 12, 24]}
+                  onPageChange={(newPage) => {
+                    setJobPage(newPage);
+                    window.scrollTo({ top: 320, behavior: 'smooth' });
+                  }}
+                  onPageSizeChange={(newLimit) => {
+                    setJobLimit(newLimit);
+                    setJobPage(1);
+                  }}
+                  itemLabel="job openings"
+                />
             ) : (
               <div className="space-y-6">
                 {viewMode === 'list' ? (

@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { apiResponse } from "@/lib/apiResponse";
 import { status as Status } from "@/constants/statusCodes";
 import { createPaginatedResponse, getPagination } from "@/services/pagination.service";
+import { createPaginatedResponse, getPagination } from "@/services/pagination.service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,6 +144,12 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    const serializedWorkers = workers.map((w) => {
+      const ratingCount = w.reviews.length;
+      const avgRating =
+        ratingCount > 0
+          ? w.reviews.reduce((acc, r) => acc + r.rating, 0) / ratingCount
+          : 4.8; // default benchmark rating
     const serializedWorkers = workers.map((w) => {
       const ratingCount = w.reviews.length;
       const avgRating =
