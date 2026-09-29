@@ -110,14 +110,30 @@ export const WorkerConnectionService = {
         worker: {
           include: {
             user: { select: { id: true, name: true, email: true, profileImage: true } },
-            skills: true,
+            skills: {
+              include: {
+                skill: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
             services: true,
           },
         },
         connectedWorker: {
           include: {
             user: { select: { id: true, name: true, email: true, profileImage: true } },
-            skills: true,
+            skills: {
+              include: {
+                skill: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
             services: true,
           },
         },
@@ -137,7 +153,7 @@ export const WorkerConnectionService = {
           email: peer.user.email,
           profileImage: peer.user.profileImage,
           headline: peer.headline,
-          skills: peer.skills.map((s) => s.name),
+          skills: peer.skills.map((s) => s.skill.name),
           services: peer.services.map((s) => ({
             name: s.serviceName,
             price: s.price.toString(),

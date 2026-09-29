@@ -24,7 +24,15 @@ export async function GET(
             status: true,
           },
         },
-        skills: true,
+        skills: {
+          include: {
+            skill: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
         services: true,
         address: true,
         reviews: {
@@ -69,7 +77,7 @@ export async function GET(
       portfolio: worker.portfolio,
       isVerified: worker.isVerified,
       hourlyRate: worker.hourlyRate ? Number(worker.hourlyRate.toString()) : 299,
-      skills: worker.skills.map((s) => s.name),
+      skills: worker.skills.map((s) => s.skill.name),
       services: worker.services.map((srv) => ({
         id: srv.id.toString(),
         name: srv.serviceName,

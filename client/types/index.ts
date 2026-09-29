@@ -103,3 +103,9 @@ export interface WorkerMetric {
   walletBalance: number;
   totalReviews: number;
 }
+
+/* Export Submodule Types */
+export * from './client/search';
+export * from './job/job';
+export * from './booking/booking';
+export * from './worker/worker';

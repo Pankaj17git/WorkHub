@@ -76,7 +76,15 @@ export const userController = {
         include: {
           roleRef: true,
           customer: { include: { address: true } },
-          worker: { include: { address: true, skills: true } },
+          worker: { include: { address: true, skills: {
+            include: {
+              skill: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          } } },
         },
       });
 
@@ -122,7 +130,7 @@ export const userController = {
                   headline: user.worker.headline,
                   bio: user.worker.bio,
                   portfolio: user.worker.portfolio,
-                  skills: user.worker.skills.map((s) => ({ id: s.id.toString(), name: s.name })),
+                  skills: user.worker.skills.map((s) => ({ id: s.skillId.toString(), name: s.skill.name })),
                 }
               : null,
           },
