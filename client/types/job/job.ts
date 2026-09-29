@@ -1,4 +1,4 @@
-interface Address {
+export interface Address {
   address: string;
   city: string;
   state: string;
@@ -40,3 +40,54 @@ export enum JobStatus {
   CANCELLED = "CANCELLED",
   EXPIRED = "EXPIRED",
 }
+
+export interface JobSkillObject {
+  id?: string | number;
+  name: string;
+}
+
+export type JobSkillItem = string | JobSkillObject;
+
+export interface RawJobCustomer {
+  id?: string | number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+}
+
+export interface RawJobPosting {
+  id: string;
+  title: string;
+  description?: string;
+  serviceName?: string;
+  customer?: RawJobCustomer | null;
+  customerName?: string;
+  customerAvatar?: string;
+  address?: {
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    address?: string | null;
+  } | null;
+  location?: string;
+  distanceKm?: number;
+  status: 'OPEN' | 'URGENT' | 'IN_PROGRESS' | string;
+  minAmount?: number;
+  maxAmount?: number;
+  minBudget?: number;
+  maxBudget?: number;
+  requiredWorkers?: number;
+  skills?: JobSkillItem[];
+  createdAt?: string;
+  postedAt?: string;
+}
+
+export interface RawJobsApiResponse {
+  jobs?: RawJobPosting[];
+  data?: {
+    jobs?: RawJobPosting[];
+  };
+}
+
+export type MarketplaceJobStatusFilter = 'ALL' | 'OPEN' | 'IN_PROGRESS';

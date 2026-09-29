@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { apiResponse } from "@/lib/apiResponse";
 import { status as Status } from "@/constants/statusCodes";
+import { createPaginatedResponse, getPagination } from "@/services/pagination.service";
 import { createPaginatedResponse, getPagination } from "@/services/pagination.service";
 
 export async function GET(request: NextRequest) {
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
       limit: limitParam ? Number(limitParam) : 6,
     });
 
-    const andConditions: any[] = [{ deletedAt: null }];
+    const andConditions: Prisma.WorkerWhereInput[] = [{ deletedAt: null }];
 
     if (query && query.trim()) {
       const q = query.trim();
@@ -33,7 +35,10 @@ export async function GET(request: NextRequest) {
             skills: {
               some: {
                 skill: {
-                  name: { contains: q },
+                  OR: [
+                    { name: { contains: q } },
+                    { key: { contains: q } },
+                  ],
                 },
               },
             },
@@ -50,11 +55,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (skill && skill.trim() && skill.toLowerCase() !== "all") {
+      const skillTokens = skill
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       andConditions.push({
         skills: {
           some: {
             skill: {
-              name: { contains: skill.trim() },
+              OR: skillTokens.flatMap((s) => [
+                { key: s },
+                { key: { contains: s } },
+                { name: { contains: s } },
+                { name: { contains: s.replace(/_/g, " ") } },
+              ]),
             },
           },
         },
@@ -81,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     const where = { AND: andConditions };
 
-    let orderBy: any = { createdAt: "desc" };
+    let orderBy: Prisma.WorkerOrderByWithRelationInput = { createdAt: "desc" };
     if (sort === "price_low") {
       orderBy = { hourlyRate: "asc" };
     } else if (sort === "price_high") {
@@ -135,6 +150,12 @@ export async function GET(request: NextRequest) {
         ratingCount > 0
           ? w.reviews.reduce((acc, r) => acc + r.rating, 0) / ratingCount
           : 4.8; // default benchmark rating
+    const serializedWorkers = workers.map((w) => {
+      const ratingCount = w.reviews.length;
+      const avgRating =
+        ratingCount > 0
+          ? w.reviews.reduce((acc, r) => acc + r.rating, 0) / ratingCount
+          : 4.8; // default benchmark rating
 
       return {
         id: w.id.toString(),
@@ -172,8 +193,7 @@ export async function GET(request: NextRequest) {
 
     return apiResponse.success(
       {
-        ...response,
-        workers: serializedWorkers,
+        ...response
       },
       Status.OK
     );

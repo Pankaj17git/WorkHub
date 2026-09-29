@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useRef, useSyncExternalStore, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -23,7 +23,7 @@ import { clearSession, getSessionSnapshot, subscribeToSession, getToken } from '
 import api from '@/lib/api';
 import WorkHubLogo from '@/components/ui/WorkHubLogo';
 
-export default function Navbar() {
+function NavbarContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -648,5 +648,13 @@ export default function Navbar() {
         )}
       </div>
     </header>
+  );
+}
+
+export default function Navbar() {
+  return (
+    <Suspense fallback={null}>
+      <NavbarContent />
+    </Suspense>
   );
 }

@@ -12,17 +12,12 @@ import {
   Navigation, 
   KeyRound, 
   Clock,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
   Star,
-  Sparkles,
-  X
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';
 import StatusTimeline from '@/components/booking/StatusTimeline';
 import { getToken } from '@/lib/auth-client';
-import { JobStatus } from '@/generated/prisma/enums';
+import { BookingTimelineStatus } from '@/types';
 
 export default function BookingTrackPage() {
   const params = useParams();
@@ -31,7 +26,7 @@ export default function BookingTrackPage() {
   const numericId = rawId.replace(/\D/g, '') || '1';
   const pro = MOCK_PROS[0];
 
-  const [status, setStatus] = useState<'CONFIRMED' | 'PRO_ASSIGNED' | 'ON_THE_WAY' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED'>('ON_THE_WAY');
+  const [status, setStatus] = useState<BookingTimelineStatus>('ON_THE_WAY');
   const [doorstepOtp, setDoorstepOtp] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
@@ -224,7 +219,7 @@ export default function BookingTrackPage() {
               {status}
             </span>
           </div>
-          <StatusTimeline currentStatus={status as any} />
+          <StatusTimeline currentStatus={status} />
 
           {status === 'COMPLETED' && (
             <div className="p-4 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] flex items-center justify-between gap-4">

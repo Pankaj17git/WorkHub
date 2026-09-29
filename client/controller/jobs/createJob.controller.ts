@@ -458,7 +458,15 @@ export const JobController = {
           worker: {
             include: {
               user: { select: { name: true, email: true, profileImage: true } },
-              skills: true,
+              skills: {
+                include: {
+                  skill: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
               services: true,
             },
           },
@@ -480,7 +488,7 @@ export const JobController = {
               email: app.worker.user.email,
               profileImage: app.worker.user.profileImage,
               headline: app.worker.headline,
-              skills: app.worker.skills.map((s) => s.name),
+              skills: app.worker.skills.map((s) => s.skill.name),
             },
           })),
         },

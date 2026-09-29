@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Filter,
   Star,
@@ -25,6 +25,13 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { MOCK_CATEGORIES } from '@/data/mockData';
+import api from '@/lib/api';
+import {
+  BudgetRange,
+  JobFilterStatus,
+  SearchAvailability,
+  SkillItem,
+} from '@/types';
 
 export interface FilterSidebarProps {
   searchMode?: 'workers' | 'jobs';
@@ -35,8 +42,8 @@ export interface FilterSidebarProps {
   selectedCategories: string[];
   onToggleCategory: (cat: string) => void;
   // Availability
-  availability: 'any' | 'today' | 'this_week' | 'custom';
-  onSelectAvailability: (avail: 'any' | 'today' | 'this_week' | 'custom') => void;
+  availability: SearchAvailability;
+  onSelectAvailability: (avail: SearchAvailability) => void;
   // Experience
   selectedExperience: string[];
   onToggleExperience: (exp: string) => void;
@@ -47,10 +54,10 @@ export interface FilterSidebarProps {
   maxDistance: number;
   onDistanceChange: (km: number) => void;
   // Job Specific
-  jobStatus?: 'ALL' | 'OPEN' | 'URGENT';
-  onSelectJobStatus?: (status: 'ALL' | 'OPEN' | 'URGENT') => void;
-  budgetRange?: 'ALL' | 'LOW' | 'MID' | 'HIGH';
-  onSelectBudgetRange?: (b: 'ALL' | 'LOW' | 'MID' | 'HIGH') => void;
+  jobStatus?: JobFilterStatus;
+  onSelectJobStatus?: (status: JobFilterStatus) => void;
+  budgetRange?: BudgetRange;
+  onSelectBudgetRange?: (b: BudgetRange) => void;
   // Reset
   onReset: () => void;
 }
@@ -68,16 +75,56 @@ const POPULAR_LOCATIONS = [
   'Bengaluru',
 ];
 
+
+
 const CATEGORY_ICON_MAP: Record<string, React.ReactNode> = {
-  Electricians: <Zap className="w-3.5 h-3.5 text-[#0051d5]" />,
-  Plumbers: <Wrench className="w-3.5 h-3.5 text-[#0284c7]" />,
-  'AC & Appliance Repair': <Wind className="w-3.5 h-3.5 text-[#06b6d4]" />,
-  Carpenters: <Hammer className="w-3.5 h-3.5 text-[#d97706]" />,
-  Painters: <Paintbrush className="w-3.5 h-3.5 text-[#8b5cf6]" />,
-  'Deep Cleaning': <Sparkles className="w-3.5 h-3.5 text-[#10b981]" />,
-  'Pest Control': <ShieldAlert className="w-3.5 h-3.5 text-[#ef4444]" />,
-  'Home Automation': <Cpu className="w-3.5 h-3.5 text-[#6366f1]" />,
+  electrician: <Zap className="w-3.5 h-3.5 text-[#0051d5]" />,
+  electricians: <Zap className="w-3.5 h-3.5 text-[#0051d5]" />,
+  electrical_helper: <Zap className="w-3.5 h-3.5 text-[#0051d5]" />,
+  plumber: <Wrench className="w-3.5 h-3.5 text-[#0284c7]" />,
+  plumbers: <Wrench className="w-3.5 h-3.5 text-[#0284c7]" />,
+  pipe_fitter: <Wrench className="w-3.5 h-3.5 text-[#0284c7]" />,
+  sanitary_worker: <Wrench className="w-3.5 h-3.5 text-[#0284c7]" />,
+  ac_technician: <Wind className="w-3.5 h-3.5 text-[#06b6d4]" />,
+  'appliance-repair': <Wind className="w-3.5 h-3.5 text-[#06b6d4]" />,
+  'ac & appliance repair': <Wind className="w-3.5 h-3.5 text-[#06b6d4]" />,
+  carpenter: <Hammer className="w-3.5 h-3.5 text-[#d97706]" />,
+  carpenters: <Hammer className="w-3.5 h-3.5 text-[#d97706]" />,
+  furniture_carpenter: <Hammer className="w-3.5 h-3.5 text-[#d97706]" />,
+  mason: <Hammer className="w-3.5 h-3.5 text-[#d97706]" />,
+  bricklayer: <Hammer className="w-3.5 h-3.5 text-[#d97706]" />,
+  tile_worker: <Hammer className="w-3.5 h-3.5 text-[#d97706]" />,
+  painter: <Paintbrush className="w-3.5 h-3.5 text-[#8b5cf6]" />,
+  painters: <Paintbrush className="w-3.5 h-3.5 text-[#8b5cf6]" />,
+  wall_painter: <Paintbrush className="w-3.5 h-3.5 text-[#8b5cf6]" />,
+  interior_painter: <Paintbrush className="w-3.5 h-3.5 text-[#8b5cf6]" />,
+  cleaning: <Sparkles className="w-3.5 h-3.5 text-[#10b981]" />,
+  'deep cleaning': <Sparkles className="w-3.5 h-3.5 text-[#10b981]" />,
+  'pest-control': <ShieldAlert className="w-3.5 h-3.5 text-[#ef4444]" />,
+  'pest control': <ShieldAlert className="w-3.5 h-3.5 text-[#ef4444]" />,
+  'home-automation': <Cpu className="w-3.5 h-3.5 text-[#6366f1]" />,
+  'home automation': <Cpu className="w-3.5 h-3.5 text-[#6366f1]" />,
+  solar_panel_installer: <Cpu className="w-3.5 h-3.5 text-[#6366f1]" />,
+  inverter_technician: <Cpu className="w-3.5 h-3.5 text-[#6366f1]" />,
 };
+
+function getCategoryIcon(key?: string, name?: string) {
+  const normalizedKey = key ? key.toLowerCase().trim() : '';
+  const normalizedName = name ? name.toLowerCase().trim() : '';
+
+  if (normalizedKey && CATEGORY_ICON_MAP[normalizedKey]) {
+    return CATEGORY_ICON_MAP[normalizedKey];
+  }
+  if (normalizedName && CATEGORY_ICON_MAP[normalizedName]) {
+    return CATEGORY_ICON_MAP[normalizedName];
+  }
+  if (name && CATEGORY_ICON_MAP[name]) {
+    return CATEGORY_ICON_MAP[name];
+  }
+  return <Layers className="w-3.5 h-3.5 text-[#64748b]" />;
+}
+
+const INITIAL_CATEGORY_COUNT = 7;
 
 export default function FilterSidebar({
   searchMode = 'workers',
@@ -99,12 +146,50 @@ export default function FilterSidebar({
   onSelectBudgetRange,
   onReset,
 }: FilterSidebarProps) {
+  const [skills, setSkills] = useState<SkillItem[]>(() =>
+    MOCK_CATEGORIES.map((cat) => ({
+      id: cat.id,
+      key: cat.slug || cat.name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+      name: cat.name,
+    }))
+  );
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
 
   const displayedCategories = showAllCategories
-    ? MOCK_CATEGORIES
-    : MOCK_CATEGORIES.slice(0, 6);
+    ? skills
+    : skills.slice(0, INITIAL_CATEGORY_COUNT);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchSkills() {
+      try {
+        const res = await api.get('/api/skills');
+        const payload = res.data;
+        let list: SkillItem[] = [];
+        if (Array.isArray(payload)) {
+          list = payload;
+        } else if (Array.isArray(payload?.data?.data)) {
+          list = payload.data.data;
+        } else if (Array.isArray(payload?.data)) {
+          list = payload.data;
+        } else if (Array.isArray(payload?.skills)) {
+          list = payload.skills;
+        }
+
+        if (isMounted && list && list.length > 0) {
+          setSkills(list);
+        }
+      } catch (err) {
+        console.error('Failed to load skills:', err);
+      }
+    }
+
+    void fetchSkills();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-5 md:p-6 space-y-6 shadow-xs">
@@ -201,50 +286,66 @@ export default function FilterSidebar({
 
         {/* Category Dropdown quick-select */}
         <select
-          value={selectedCategories.length === 1 ? selectedCategories[0] : 'all'}
+          value={
+            selectedCategories.length === 1
+              ? (skills.find(
+                  (s) => s.key === selectedCategories[0] || s.name === selectedCategories[0]
+                )?.key || selectedCategories[0])
+              : 'all'
+          }
           onChange={(e) => {
             const val = e.target.value;
             if (val === 'all') {
               // clear categories
-              MOCK_CATEGORIES.forEach((c) => {
-                if (selectedCategories.includes(c.name)) onToggleCategory(c.name);
+              skills.forEach((c) => {
+                if (selectedCategories.includes(c.key) || selectedCategories.includes(c.name)) {
+                  onToggleCategory(c.key);
+                }
               });
             } else {
               // Set only this category
-              MOCK_CATEGORIES.forEach((c) => {
-                const isSelected = selectedCategories.includes(c.name);
-                if (c.name === val && !isSelected) onToggleCategory(c.name);
-                if (c.name !== val && isSelected) onToggleCategory(c.name);
+              skills.forEach((c) => {
+                const isSelected = selectedCategories.includes(c.key) || selectedCategories.includes(c.name);
+                if (c.key === val && !isSelected) onToggleCategory(c.key);
+                if (c.key !== val && isSelected) onToggleCategory(c.key);
               });
             }
           }}
           className="w-full text-xs font-medium text-[#334155] bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl px-3 py-2 outline-none focus:border-[#0051d5] cursor-pointer"
         >
           <option value="all">All Categories</option>
-          {MOCK_CATEGORIES.map((cat) => (
-            <option key={cat.id} value={cat.name}>
+          {skills.map((cat) => (
+            <option key={String(cat.id ?? cat.key)} value={cat.key}>
               {cat.name}
             </option>
           ))}
         </select>
 
         {/* Checkbox Category List */}
-        <div className="space-y-2 pt-1">
+        <div
+          className={`space-y-2 pt-1 transition-all ${
+            showAllCategories
+              ? 'max-h-60 overflow-y-auto pr-1 overscroll-contain'
+              : ''
+          }`}
+        >
           {displayedCategories.map((cat) => {
-            const isChecked = selectedCategories.includes(cat.name);
+            const isChecked =
+              selectedCategories.includes(cat.key) ||
+              selectedCategories.includes(cat.name);
             return (
               <label
-                key={cat.id}
-                className="flex items-center gap-2.5 text-xs text-[#334155] hover:text-[#091426] cursor-pointer select-none group"
+                key={String(cat.id ?? cat.key)}
+                className="flex items-center gap-2.5 text-xs text-[#334155] hover:text-[#091426] cursor-pointer select-none group py-0.5"
               >
                 <input
                   type="checkbox"
                   checked={isChecked}
-                  onChange={() => onToggleCategory(cat.name)}
+                  onChange={() => onToggleCategory(cat.key)}
                   className="w-4 h-4 rounded border-[#cbd5e1] text-[#0051d5] focus:ring-[#0051d5] cursor-pointer accent-[#0051d5]"
                 />
                 <span className="shrink-0">
-                  {CATEGORY_ICON_MAP[cat.name] || <Layers className="w-3.5 h-3.5 text-[#64748b]" />}
+                  {getCategoryIcon(cat.key, cat.name)}
                 </span>
                 <span className={`flex-1 truncate ${isChecked ? 'font-semibold text-[#091426]' : 'font-normal'}`}>
                   {cat.name}
@@ -252,20 +353,26 @@ export default function FilterSidebar({
               </label>
             );
           })}
+        </div>
 
+        {skills.length > INITIAL_CATEGORY_COUNT && (
           <button
             type="button"
             onClick={() => setShowAllCategories(!showAllCategories)}
-            className="text-xs text-[#0051d5] font-semibold hover:underline flex items-center gap-1 pt-1"
+            className="text-xs text-[#0051d5] font-semibold hover:underline flex items-center gap-1 pt-1 cursor-pointer"
           >
-            <span>{showAllCategories ? 'Show less' : 'Show more'}</span>
+            <span>
+              {showAllCategories
+                ? 'Show less'
+                : `Show more (${skills.length - INITIAL_CATEGORY_COUNT} more)`}
+            </span>
             {showAllCategories ? (
               <ChevronUp className="w-3 h-3" />
             ) : (
               <ChevronDown className="w-3 h-3" />
             )}
           </button>
-        </div>
+        )}
       </div>
 
       {/* 3. Availability (Customer mode) */}
@@ -407,16 +514,18 @@ export default function FilterSidebar({
               <span>Budget Range</span>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              {[
-                { label: 'Any Budget', value: 'ALL' },
-                { label: 'Under ₹500', value: 'LOW' },
-                { label: '₹500 – ₹2k', value: 'MID' },
-                { label: '₹2,000+', value: 'HIGH' },
-              ].map((b) => (
+              {(
+                [
+                  { label: 'Any Budget', value: 'ALL' },
+                  { label: 'Under ₹500', value: 'LOW' },
+                  { label: '₹500 – ₹2k', value: 'MID' },
+                  { label: '₹2,000+', value: 'HIGH' },
+                ] as const
+              ).map((b) => (
                 <button
                   key={b.value}
                   type="button"
-                  onClick={() => onSelectBudgetRange && onSelectBudgetRange(b.value as any)}
+                  onClick={() => onSelectBudgetRange && onSelectBudgetRange(b.value)}
                   className={`py-1.5 px-2 text-[11px] font-semibold rounded-xl border text-center transition-all ${
                     budgetRange === b.value
                       ? 'bg-[#0051d5] text-white border-[#0051d5] shadow-xs'
