@@ -6,19 +6,12 @@ import {
   Briefcase,
   Search,
   MapPin,
-  Clock,
   Users,
-  DollarSign,
-  Filter,
   Plus,
   ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
-  Sparkles,
-  Layers
 } from 'lucide-react';
 import { getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { MarketplaceJobStatusFilter } from '@/types';
 
 interface JobItem {
   id: string;
@@ -46,7 +39,7 @@ export default function JobsMarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSkill, setSelectedSkill] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'IN_PROGRESS'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<MarketplaceJobStatusFilter>('ALL');
 
   const skillsFilters = [
     'ALL',
@@ -150,7 +143,7 @@ export default function JobsMarketplacePage() {
             <span className="text-xs font-semibold text-[#64748b] font-geist shrink-0">Status:</span>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as MarketplaceJobStatusFilter)}
               className="px-3 py-2 text-xs bg-[#f8f9ff] border border-[#e2e8f0] rounded-xl font-geist font-semibold text-[#091426] focus:outline-none"
             >
               <option value="ALL">All Statuses</option>

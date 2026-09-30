@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { AvailabilityCheckOptions } from "@/types";
 
 export interface AvailabilityCheckResult {
   isAvailable: boolean;
@@ -39,13 +40,7 @@ export const AvailabilityService = {
     scheduledDate: Date | string,
     requestedStartTime: string,
     requestedEndTime: string,
-    options?: {
-      serviceName?: string;
-      bufferMinutes?: number;
-      excludeAssignmentId?: bigint;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      dbClient?: any;
-    }
+    options?: AvailabilityCheckOptions
   ): Promise<AvailabilityCheckResult> {
     const db = options?.dbClient || prisma;
     const buffer = options?.bufferMinutes ?? 30;
