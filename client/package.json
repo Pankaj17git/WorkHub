@@ -5,9 +5,9 @@
   "scripts": {
     "migrate": "node scripts/migrate.mjs",
     "socket": "node scripts/socket-server.mjs",
-    "dev": "node scripts/migrate.mjs && next dev",
+    "dev": "node scripts/migrate.mjs && tsx server.js",
     "build": "next build",
-    "start": "node scripts/migrate.mjs && next start",
+    "start": "node scripts/migrate.mjs && NODE_ENV=production tsx server.js",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
