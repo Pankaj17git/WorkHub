@@ -608,6 +608,7 @@ function NavbarContent() {
                     </div>
 
                     <Link
+                      onClick={closeMenus}
                       href="/profile"
                       className="px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2"
                     >
