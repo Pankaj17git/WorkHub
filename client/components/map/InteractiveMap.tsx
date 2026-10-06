@@ -322,7 +322,6 @@ export default function InteractiveMap({
   };
 
   const handleMapClick = async (latlng: L.LatLng) => {
-    console.log("location coordsar", latlng);
     setSelectedPin({ lat: latlng.lat, lng: latlng.lng });
     if (onLocationSelect) {
       const details = await reverseGeocode(latlng.lat, latlng.lng);
