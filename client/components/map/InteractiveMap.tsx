@@ -1,26 +1,29 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
   Circle,
-  useMap,
   useMapEvents,
 } from "react-leaflet";
-import L, { type LeafletEventHandlerFn } from "leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
-import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
-import "leaflet-geosearch/dist/geosearch.css";
+import { OpenStreetMapProvider } from "leaflet-geosearch";
 import {
   MapPin,
   Navigation,
   Crosshair,
-  Layers,
   RotateCcw,
   Sparkles,
   Info,
@@ -31,28 +34,56 @@ import {
   MapPinned,
 } from "lucide-react";
 
-// Custom modern SVG Marker Icons
-const createWorkHubIcon = (color: string = "#4f46e5") => {
-  return L.divIcon({
+/* -------------------------------------------------------------------------- */
+/* Constants                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const DEFAULT_LAT = 30.6996;
+const DEFAULT_LNG = 76.693;
+const DEFAULT_LABEL = "Mohali, Punjab, India";
+const DEFAULT_ZOOM = 13;
+
+const QUICK_SEARCH_CHIPS: readonly string[] = [
+  "GR Tower Mohali",
+  "Sector 75 Mohali",
+  "Phase 8 Mohali",
+  "Connaught Place Delhi",
+  "Tower Bridge London",
+];
+
+const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+const SEARCH_DEBOUNCE_MS = 500;
+const SEARCH_MIN_CHARS = 3;
+const GEOCODE_CACHE_LIMIT = 200;
+
+/* -------------------------------------------------------------------------- */
+/* Marker icons (built once at module scope)                                  */
+/* -------------------------------------------------------------------------- */
+
+const createWorkHubIcon = (color: string): L.DivIcon =>
+  L.divIcon({
     className: "workhub-map-marker",
     html: `
-      <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-        <div style="
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 38px;
-          height: 38px;
-          background: ${color};
-          border: 3px solid #ffffff;
-          border-radius: 50%;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
-          color: white;
-          font-size: 14px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        " onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+      <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+        <div
+          class="transition-transform duration-200 hover:scale-110"
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            background: ${color};
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+            color: white;
+            cursor: pointer;
+          "
+        >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
             <circle cx="12" cy="10" r="3"/>
@@ -66,155 +97,19 @@ const createWorkHubIcon = (color: string = "#4f46e5") => {
           border-top: 8px solid ${color};
           margin-top: -2px;
         "></div>
-        <div style="
-          position: absolute;
-          bottom: -4px;
-          width: 14px;
-          height: 5px;
-          background: rgba(0,0,0,0.25);
-          border-radius: 50%;
-          filter: blur(1px);
-        "></div>
       </div>
     `,
     iconSize: [38, 48],
-    iconAnchor: [0, 0],
-    popupAnchor: [0, -46],
+    iconAnchor: [19, 48],
+    popupAnchor: [0, -48],
   });
-};
 
 const defaultPinIcon = createWorkHubIcon("#2563eb");
 const userLocationIcon = createWorkHubIcon("#10b981");
 
-interface MapControllerProps {
-  onLocationFound: (latlng: L.LatLng, accuracy: number) => void;
-  onMapClick: (latlng: L.LatLng) => void;
-  isLocating: boolean;
-  setIsLocating: (val: boolean) => void;
-  clickMode: "pin" | "locate";
-}
-
-function MapController({
-  onLocationFound,
-  onMapClick,
-  setIsLocating,
-  clickMode,
-}: MapControllerProps) {
-  const map = useMapEvents({
-    click(e) {
-      if (clickMode === "locate") {
-        setIsLocating(true);
-        map.locate({ enableHighAccuracy: true });
-      } else {
-        onMapClick(e.latlng);
-      }
-    },
-    locationfound(e) {
-      setIsLocating(false);
-      onLocationFound(e.latlng, e.accuracy);
-      map.flyTo(e.latlng, Math.max(map.getZoom(), 15), {
-        duration: 1.5,
-      });
-    },
-    locationerror(e) {
-      setIsLocating(false);
-      alert(`Location access error: ${e.message}`);
-    },
-  });
-
-  return null;
-}
-
-// Leaflet GeoSearch on-map control
-function GeoSearchMapControl({
-  onLocationSelect,
-}: {
-  onLocationSelect: (lat: number, lng: number, label: string) => void;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    const provider = new OpenStreetMapProvider();
-
-    // @ts-expect-error leaflet-geosearch control signature
-    const searchControl = new GeoSearchControl({
-      provider,
-      style: "button",
-      showMarker: false,
-      showPopup: false,
-      autoClose: true,
-      retainZoomLevel: false,
-      animateZoom: true,
-      keepResult: true,
-      searchLabel: "Search address, city, landmark...",
-    });
-
-    map.addControl(searchControl);
-
-    const handleShowLocation: LeafletEventHandlerFn = (event) => {
-      const e = event as unknown as { location?: { x: number; y: number; label: string } };
-      if (e && e.location) {
-        onLocationSelect(e.location.y, e.location.x, e.location.label);
-      }
-    };
-
-    map.on("geosearch/showlocation", handleShowLocation);
-
-    return () => {
-      map.removeControl(searchControl);
-      map.off("geosearch/showlocation", handleShowLocation);
-    };
-  }, [map, onLocationSelect]);
-
-  return null;
-}
-
-// Map Action Helper
-function MapActions({ targetCenter, targetZoom }: { targetCenter: [number, number] | null; targetZoom: number }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (targetCenter) {
-      map.flyTo(targetCenter, targetZoom, { duration: 1.2 });
-    }
-  }, [targetCenter, targetZoom, map]);
-
-  return null;
-}
-
-const PRESET_LOCATIONS = [
-  { name: "Mohali", lat: 30.6996, lng: 76.6930, zoom: 14 },
-  { name: "Chandigarh", lat: 30.7333, lng: 76.7794, zoom: 13 },
-  { name: "New Delhi", lat: 28.6139, lng: 77.209, zoom: 13 },
-  { name: "London", lat: 51.5074, lng: -0.1278, zoom: 13 },
-  { name: "New York", lat: 40.7128, lng: -74.006, zoom: 13 },
-];
-
-const QUICK_SEARCH_CHIPS = [
-  "GR Tower Mohali",
-  "Sector 75 Mohali",
-  "Phase 8 Mohali",
-  "Connaught Place Delhi",
-  "Tower Bridge London",
-];
-
-const TILE_PROVIDERS = {
-  voyager: {
-    name: "Carto Voyager",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-  },
-  light: {
-    name: "Carto Positron (Clean)",
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-  },
-  standard: {
-    name: "OpenStreetMap",
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  },
-};
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
 
 export interface InteractiveMapLocation {
   address: string;
@@ -230,167 +125,381 @@ export interface InteractiveMapProps {
   initialLng?: number;
   initialAddress?: string;
   onLocationSelect?: (location: InteractiveMapLocation) => void;
+  onError?: (message: string) => void;
   height?: string;
 }
 
-const reverseGeocode = async (lat: number, lng: number): Promise<InteractiveMapLocation> => {
+interface SelectedPin {
+  lat: number;
+  lng: number;
+  label?: string;
+}
+
+interface UserLocation {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+}
+
+interface SearchResultItem {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+type ClickMode = "pin" | "locate";
+
+interface NominatimAddress {
+  road?: string;
+  suburb?: string;
+  neighbourhood?: string;
+  amenity?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  county?: string;
+  state_district?: string;
+  state?: string;
+  country?: string;
+}
+
+interface NominatimResponse {
+  display_name?: string;
+  address?: NominatimAddress;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Reverse geocoding (cached, abortable)                                      */
+/* -------------------------------------------------------------------------- */
+
+const geocodeCache = new Map<string, InteractiveMapLocation>();
+
+const fallbackLocation = (
+  lat: number,
+  lng: number,
+): InteractiveMapLocation => ({
+  address: `Pin at ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+  city: "",
+  state: "",
+  country: "India",
+  latitude: lat,
+  longitude: lng,
+});
+
+/**
+ * Returns null only when the request was aborted (a newer request replaced it).
+ */
+const reverseGeocode = async (
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<InteractiveMapLocation | null> => {
+  const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  const cached = geocodeCache.get(key);
+  if (cached) return { ...cached, latitude: lat, longitude: lng };
+
   try {
+    // accept-language as a query param avoids a CORS preflight caused by a custom header
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-      { headers: { "Accept-Language": "en" } }
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=en`,
+      { signal },
     );
-    if (res.ok) {
-      const data = await res.json();
-      const addr = data.address || {};
-      const street = addr.road || addr.suburb || addr.neighbourhood || addr.amenity || "";
-      const city = addr.city || addr.town || addr.village || addr.county || addr.state_district || "";
-      const state = addr.state || "";
-      const country = addr.country || "India";
-      const fullAddress = data.display_name || `${street}, ${city}`;
+    if (!res.ok) return fallbackLocation(lat, lng);
 
-      return {
-        address: street ? `${street}${city ? `, ${city}` : ""}` : fullAddress.split(",").slice(0, 3).join(",").trim(),
-        city: city || "Unknown City",
-        state: state || "",
-        country: country || "India",
-        latitude: lat,
-        longitude: lng,
-      };
+    const data: NominatimResponse = await res.json();
+    const addr: NominatimAddress = data.address ?? {};
+
+    const street =
+      addr.road || addr.suburb || addr.neighbourhood || addr.amenity || "";
+    const city =
+      addr.city ||
+      addr.town ||
+      addr.village ||
+      addr.county ||
+      addr.state_district ||
+      "";
+    const fullAddress = data.display_name || `${street}, ${city}`;
+
+    const result: InteractiveMapLocation = {
+      address: street
+        ? `${street}${city ? `, ${city}` : ""}`
+        : fullAddress.split(",").slice(0, 3).join(",").trim(),
+      city: city || "Unknown City",
+      state: addr.state || "",
+      country: addr.country || "India",
+      latitude: lat,
+      longitude: lng,
+    };
+
+    if (geocodeCache.size >= GEOCODE_CACHE_LIMIT) {
+      const oldestKey = geocodeCache.keys().next().value;
+      if (oldestKey !== undefined) geocodeCache.delete(oldestKey);
     }
-  } catch (err) {
-    console.error("Reverse geocoding error:", err);
-  }
+    geocodeCache.set(key, result);
 
-  return {
-    address: `Pin at ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-    city: "",
-    state: "",
-    country: "India",
-    latitude: lat,
-    longitude: lng,
-  };
+    return result;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") return null;
+    console.error("Reverse geocoding error:", err);
+    return fallbackLocation(lat, lng);
+  }
 };
+
+/* -------------------------------------------------------------------------- */
+/* Map event controller                                                       */
+/* -------------------------------------------------------------------------- */
+
+interface MapControllerProps {
+  clickMode: ClickMode;
+  onLocationFound: (latlng: L.LatLng, accuracy: number) => void;
+  onLocationError: (message: string) => void;
+  onMapClick: (latlng: L.LatLng) => void;
+  onLocateRequest: () => void;
+}
+
+function MapController({
+  clickMode,
+  onLocationFound,
+  onLocationError,
+  onMapClick,
+  onLocateRequest,
+}: MapControllerProps) {
+  const map = useMapEvents({
+    click(e) {
+      if (clickMode === "locate") {
+        onLocateRequest();
+      } else {
+        onMapClick(e.latlng);
+      }
+    },
+    locationfound(e) {
+      onLocationFound(e.latlng, e.accuracy);
+      map.flyTo(e.latlng, Math.max(map.getZoom(), 15), { duration: 1.5 });
+    },
+    locationerror(e) {
+      onLocationError(`Location access error: ${e.message}`);
+    },
+  });
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Main component                                                             */
+/* -------------------------------------------------------------------------- */
 
 export default function InteractiveMap({
   initialLat,
   initialLng,
   initialAddress,
   onLocationSelect,
+  onError,
   height,
 }: InteractiveMapProps = {}) {
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
-  const [selectedPin, setSelectedPin] = useState<{ lat: number; lng: number; label?: string } | null>(() => {
+  const initialPin = useMemo<SelectedPin>(() => {
     if (initialLat !== undefined && initialLng !== undefined) {
       return {
         lat: initialLat,
         lng: initialLng,
-        label: initialAddress || `${initialLat.toFixed(4)}, ${initialLng.toFixed(4)}`,
+        label:
+          initialAddress ||
+          `${initialLat.toFixed(4)}, ${initialLng.toFixed(4)}`,
       };
     }
     return {
-      lat: 30.6996,
-      lng: 76.6930,
-      label: initialAddress || "Mohali, Punjab, India",
+      lat: DEFAULT_LAT,
+      lng: DEFAULT_LNG,
+      label: initialAddress || DEFAULT_LABEL,
     };
-  });
-  const [isLocating, setIsLocating] = useState(false);
-  const [clickMode, setClickMode] = useState<"pin" | "locate">("pin");
-  const [tileKey, setTileKey] = useState<keyof typeof TILE_PROVIDERS>("voyager");
-  const [targetView, setTargetView] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  }, [initialLat, initialLng, initialAddress]);
 
-  // GeoSearch state
+  const initialCenter = useMemo<[number, number]>(
+    () => [initialPin.lat, initialPin.lng],
+    [initialPin],
+  );
+
+  const [map, setMap] = useState<L.Map | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [selectedPin, setSelectedPin] = useState<SelectedPin | null>(
+    initialPin,
+  );
+  const [isLocating, setIsLocating] = useState(false);
+  const [clickMode, setClickMode] = useState<ClickMode>("pin");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ lat: number; lng: number; label: string }>>([]);
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const geoAbortRef = useRef<AbortController | null>(null);
+  // Query text we set programmatically; the debounced search skips it
+  const programmaticQueryRef = useRef<string>("");
 
   const searchProvider = useMemo(() => new OpenStreetMapProvider(), []);
 
-  const initialCenter: [number, number] = [
-    initialLat ?? 30.6996,
-    initialLng ?? 76.6930,
-  ];
+  /* ---------------------------- helpers ---------------------------- */
 
-  const handleLocationFound = async (latlng: L.LatLng, accuracy: number) => {
-    setUserLocation({ lat: latlng.lat, lng: latlng.lng, accuracy });
-    setSelectedPin({ lat: latlng.lat, lng: latlng.lng, label: "Current GPS Location" });
-    if (onLocationSelect) {
-      const details = await reverseGeocode(latlng.lat, latlng.lng);
-      onLocationSelect(details);
-    }
-  };
+  const reportError = useCallback(
+    (message: string) => {
+      setErrorMessage(message);
+      onError?.(message);
+    },
+    [onError],
+  );
 
-  const handleMapClick = async (latlng: L.LatLng) => {
-    setSelectedPin({ lat: latlng.lat, lng: latlng.lng });
-    if (onLocationSelect) {
-      const details = await reverseGeocode(latlng.lat, latlng.lng);
-      setSelectedPin({ lat: latlng.lat, lng: latlng.lng, label: details.address });
-      onLocationSelect(details);
-    }
-  };
+  const setQueryProgrammatically = useCallback((text: string) => {
+    programmaticQueryRef.current = text.trim();
+    setSearchQuery(text);
+  }, []);
 
-  const handleSelectLocation = async (lat: number, lng: number, label: string) => {
-    console.log("the location coords are", lat, lng);
-    setSelectedPin({ lat, lng, label });
-    setTargetView({ center: [lat, lng], zoom: 16 });
-    setSearchQuery(label.split(",").slice(0, 2).join(",").trim());
-    setShowDropdown(false);
+  /** Reverse geocode, aborting any previous in-flight request. */
+  const resolveLocation = useCallback(
+    (lat: number, lng: number): Promise<InteractiveMapLocation | null> => {
+      geoAbortRef.current?.abort();
+      const controller = new AbortController();
+      geoAbortRef.current = controller;
+      return reverseGeocode(lat, lng, controller.signal);
+    },
+    [],
+  );
 
-    if (onLocationSelect) {
-      const details = await reverseGeocode(lat, lng);
-      // If reverse geocode didn't catch city/state, use parsed label
-      const parts = label.split(",").map((s) => s.trim());
-      if (!details.city && parts.length >= 2) {
-        details.city = parts[parts.length - 2] || "";
-      }
-      onLocationSelect({
-        ...details,
-        address: details.address || label.split(",").slice(0, 2).join(", ").trim(),
+  useEffect(() => () => geoAbortRef.current?.abort(), []);
+
+  /* ---------------------------- map handlers ---------------------------- */
+
+  const startLocate = useCallback(() => {
+    if (!map) return;
+    setErrorMessage(null);
+    setIsLocating(true);
+    map.locate({ enableHighAccuracy: true });
+  }, [map]);
+
+  const handleLocationFound = useCallback(
+    async (latlng: L.LatLng, accuracy: number) => {
+      setIsLocating(false);
+      setUserLocation({ lat: latlng.lat, lng: latlng.lng, accuracy });
+      setSelectedPin({
+        lat: latlng.lat,
+        lng: latlng.lng,
+        label: "Current GPS Location",
       });
-    }
-  };
 
-  // Debounced autocomplete search using leaflet-geosearch provider
+      if (onLocationSelect) {
+        const details = await resolveLocation(latlng.lat, latlng.lng);
+        if (details) onLocationSelect(details);
+      }
+    },
+    [onLocationSelect, resolveLocation],
+  );
+
+  const handleLocationError = useCallback(
+    (message: string) => {
+      setIsLocating(false);
+      reportError(message);
+    },
+    [reportError],
+  );
+
+  const handleMapClick = useCallback(
+    async (latlng: L.LatLng) => {
+      setErrorMessage(null);
+      setSelectedPin({ lat: latlng.lat, lng: latlng.lng }); // instant feedback
+
+      if (onLocationSelect) {
+        const details = await resolveLocation(latlng.lat, latlng.lng);
+        if (!details) return; // superseded by a newer click
+        setSelectedPin({
+          lat: latlng.lat,
+          lng: latlng.lng,
+          label: details.address,
+        });
+        onLocationSelect(details);
+      }
+    },
+    [onLocationSelect, resolveLocation],
+  );
+
+  const handleSelectLocation = useCallback(
+    async (lat: number, lng: number, label: string) => {
+      setErrorMessage(null);
+      setSelectedPin({ lat, lng, label });
+      map?.flyTo([lat, lng], 16, { duration: 1.2 });
+      setQueryProgrammatically(label.split(",").slice(0, 2).join(",").trim());
+      setShowDropdown(false);
+
+      if (onLocationSelect) {
+        const details = await resolveLocation(lat, lng);
+        if (!details) return;
+
+        const merged: InteractiveMapLocation = { ...details };
+        const parts = label.split(",").map((s) => s.trim());
+        if (!merged.city && parts.length >= 2) {
+          merged.city = parts[parts.length - 2] || "";
+        }
+        merged.address =
+          merged.address || label.split(",").slice(0, 2).join(", ").trim();
+        onLocationSelect(merged);
+      }
+    },
+    [map, onLocationSelect, resolveLocation, setQueryProgrammatically],
+  );
+
+  const handleReset = useCallback(() => {
+    map?.flyTo(initialCenter, DEFAULT_ZOOM, { duration: 1.2 });
+    setSelectedPin(initialPin);
+    setQueryProgrammatically("");
+    setSearchResults([]);
+    setShowDropdown(false);
+    setErrorMessage(null);
+  }, [map, initialCenter, initialPin, setQueryProgrammatically]);
+
+  /* ---------------------------- search ---------------------------- */
+
+  // Debounced autocomplete
   useEffect(() => {
-    const trimmed = searchQuery.trim();
-    if (!trimmed || trimmed.length < 2) {
-      const timer = setTimeout(() => {
-        setSearchResults([]);
-      }, 0);
-      return () => clearTimeout(timer);
+    const query = searchQuery.trim();
+
+    if (query === programmaticQueryRef.current) return; // set by a selection, don't re-search
+    if (query.length < SEARCH_MIN_CHARS) {
+      setSearchResults([]);
+      return;
     }
 
+    let cancelled = false;
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const results = await searchProvider.search({ query: trimmed });
-        if (results && results.length > 0) {
-          setSearchResults(
-            results.slice(0, 6).map((r: { x: number; y: number; label: string }) => ({
-              lat: r.y,
-              lng: r.x,
-              label: r.label,
-            }))
-          );
-          setShowDropdown(true);
-        } else {
-          setSearchResults([]);
-        }
+        const results = await searchProvider.search({ query });
+        if (cancelled) return;
+        setSearchResults(
+          results
+            .slice(0, 6)
+            .map((r) => ({ lat: r.y, lng: r.x, label: r.label })),
+        );
+        setShowDropdown(results.length > 0);
       } catch (err) {
-        console.error("GeoSearch error:", err);
+        if (!cancelled) console.error("GeoSearch error:", err);
       } finally {
-        setIsSearching(false);
+        if (!cancelled) setIsSearching(false);
       }
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [searchQuery, searchProvider]);
 
-  // Close dropdown on click outside
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
@@ -398,57 +507,55 @@ export default function InteractiveMap({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSearchSubmit = async (e?: React.FormEvent, customQuery?: string) => {
-    if (e) e.preventDefault();
-    const q = (customQuery ?? searchQuery).trim();
-    if (!q) return;
+  const runSearch = useCallback(
+    async (rawQuery: string) => {
+      const query = rawQuery.trim();
+      if (!query) return;
 
-    setIsSearching(true);
-    try {
-      const results = await searchProvider.search({ query: q });
-      if (results && results.length > 0) {
+      setIsSearching(true);
+      try {
+        const results = await searchProvider.search({ query });
         const top = results[0];
-        handleSelectLocation(top.y, top.x, top.label);
-      } else {
-        alert(`No location found for "${q}". Try another landmark or address.`);
+        if (top) {
+          await handleSelectLocation(top.y, top.x, top.label);
+        } else {
+          reportError(
+            `No location found for "${query}". Try another landmark or address.`,
+          );
+        }
+      } catch (err) {
+        console.error("GeoSearch submit error:", err);
+        reportError("Search failed. Please try again.");
+      } finally {
+        setIsSearching(false);
       }
-    } catch (err) {
-      console.error("GeoSearch submit error:", err);
-    } finally {
-      setIsSearching(false);
-    }
+    },
+    [searchProvider, handleSelectLocation, reportError],
+  );
+
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    void runSearch(searchQuery);
   };
 
-  const triggerLocate = () => {
-    setIsLocating(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const accuracy = pos.coords.accuracy;
-          setUserLocation({ lat, lng, accuracy });
-          setSelectedPin({ lat, lng, label: "Verified GPS Location" });
-          setTargetView({ center: [lat, lng], zoom: 15 });
-          setIsLocating(false);
-        },
-        (err) => {
-          setIsLocating(false);
-          alert(`Geolocation failed: ${err.message}`);
-        },
-        { enableHighAccuracy: true }
-      );
-    } else {
-      setIsLocating(false);
-      alert("Geolocation is not supported by your browser.");
-    }
+  const handleChipClick = (chip: string) => {
+    setQueryProgrammatically(chip); // prevents the debounced effect from double-fetching
+    void runSearch(chip);
   };
+
+  const clearSearch = () => {
+    setQueryProgrammatically("");
+    setSearchResults([]);
+    setShowDropdown(false);
+  };
+
+  /* ---------------------------- render ---------------------------- */
 
   return (
     <div className="flex flex-col gap-4 w-full">
       {/* Top Search & Controls Panel */}
       <div className="flex flex-col gap-3 p-4 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-sm">
-        {/* Row 1: Instant Search Bar powered by leaflet-geosearch */}
+        {/* Search bar */}
         <div className="relative w-full" ref={dropdownRef}>
           <form
             onSubmit={handleSearchSubmit}
@@ -478,11 +585,7 @@ export default function InteractiveMap({
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSearchResults([]);
-                    setShowDropdown(false);
-                  }}
+                  onClick={clearSearch}
                   className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
                   title="Clear search"
                 >
@@ -499,19 +602,23 @@ export default function InteractiveMap({
             </div>
           </form>
 
-          {/* Autocomplete Dropdown List */}
+          {/* Autocomplete dropdown */}
           {showDropdown && searchResults.length > 0 && (
             <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-slate-200/90 shadow-xl overflow-hidden z-[2000] max-h-72 overflow-y-auto">
               <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px] font-semibold text-slate-500 flex items-center justify-between">
                 <span>Nominatim GeoSearch Results</span>
-                <span className="text-[10px] text-slate-400">Powered by leaflet-geosearch</span>
+                <span className="text-[10px] text-slate-400">
+                  Powered by leaflet-geosearch
+                </span>
               </div>
               <ul className="divide-y divide-slate-100">
                 {searchResults.map((res, index) => (
                   <li key={`${res.lat}-${res.lng}-${index}`}>
                     <button
                       type="button"
-                      onClick={() => handleSelectLocation(res.lat, res.lng, res.label)}
+                      onClick={() =>
+                        void handleSelectLocation(res.lat, res.lng, res.label)
+                      }
                       className="w-full px-3.5 py-2.5 text-left hover:bg-indigo-50/60 flex items-start gap-2.5 transition-colors cursor-pointer group"
                     >
                       <MapPinned className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
@@ -534,7 +641,7 @@ export default function InteractiveMap({
           )}
         </div>
 
-        {/* Quick Search Chips */}
+        {/* Quick search chips */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-semibold text-slate-400 mr-1 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-amber-500" />
@@ -544,10 +651,7 @@ export default function InteractiveMap({
             <button
               key={chip}
               type="button"
-              onClick={() => {
-                setSearchQuery(chip);
-                handleSearchSubmit(undefined, chip);
-              }}
+              onClick={() => handleChipClick(chip)}
               className="px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:text-indigo-700 bg-slate-100/90 hover:bg-indigo-50 border border-slate-200/70 hover:border-indigo-200 rounded-lg transition-all cursor-pointer"
             >
               {chip}
@@ -555,13 +659,32 @@ export default function InteractiveMap({
           ))}
         </div>
 
-        {/* Row 2: Secondary Controls (Locate, Mode, Tile Style, Presets) */}
+        {/* Error banner */}
+        {errorMessage && (
+          <div
+            role="alert"
+            className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-xl"
+          >
+            <span>{errorMessage}</span>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="p-0.5 rounded-md hover:bg-red-100 cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Secondary controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
           <div className="flex flex-wrap items-center gap-2">
             <button
               id="btn-locate-me"
-              onClick={triggerLocate}
-              disabled={isLocating}
+              type="button"
+              onClick={startLocate}
+              disabled={isLocating || !map}
               className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-60 rounded-xl shadow-xs transition-all duration-150 cursor-pointer"
             >
               {isLocating ? (
@@ -579,11 +702,8 @@ export default function InteractiveMap({
 
             <button
               id="btn-reset-view"
-              onClick={() => {
-                setTargetView({ center: initialCenter, zoom: 13 });
-                setSelectedPin({ lat: initialCenter[0], lng: initialCenter[1], label: "Mohali, Punjab, India" });
-                setSearchQuery("");
-              }}
+              type="button"
+              onClick={handleReset}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
@@ -592,9 +712,10 @@ export default function InteractiveMap({
 
             <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
 
-            {/* Mode Switch */}
+            {/* Mode switch */}
             <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200/60 text-xs font-medium text-slate-600">
               <button
+                type="button"
                 onClick={() => setClickMode("pin")}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   clickMode === "pin"
@@ -605,6 +726,7 @@ export default function InteractiveMap({
                 Click: Drop Pin
               </button>
               <button
+                type="button"
                 onClick={() => setClickMode("locate")}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   clickMode === "locate"
@@ -616,74 +738,32 @@ export default function InteractiveMap({
               </button>
             </div>
           </div>
-
-          {/* Style selector & City quick jump */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <Layers className="w-3.5 h-3.5 text-slate-400" />
-              <span>Style:</span>
-              <select
-                value={tileKey}
-                onChange={(e) => setTileKey(e.target.value as keyof typeof TILE_PROVIDERS)}
-                className="px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-              >
-                <option value="voyager">Carto Voyager (Sleek)</option>
-                <option value="light">Carto Positron (Clean)</option>
-                <option value="standard">OpenStreetMap Standard</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1">
-              {PRESET_LOCATIONS.slice(0, 3).map((loc) => (
-                <button
-                  key={loc.name}
-                  onClick={() => {
-                    setTargetView({ center: [loc.lat, loc.lng], zoom: loc.zoom });
-                    setSelectedPin({ lat: loc.lat, lng: loc.lng, label: `${loc.name}` });
-                  }}
-                  className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200/60 rounded-lg transition-colors cursor-pointer"
-                >
-                  {loc.name}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Map Canvas Wrapper */}
+      {/* Map canvas */}
       <div
         className="relative w-full rounded-3xl overflow-hidden border border-slate-200/90 shadow-xl shadow-slate-900/5 bg-slate-100"
         style={{ height: height || "620px" }}
       >
         <MapContainer
+          ref={setMap}
           center={initialCenter}
-          zoom={13}
-          scrollWheelZoom={true}
+          zoom={DEFAULT_ZOOM}
+          scrollWheelZoom
           style={{ height: "100%", width: "100%", zIndex: 1 }}
         >
-          <TileLayer
-            key={tileKey}
-            attribution={TILE_PROVIDERS[tileKey].attribution}
-            url={TILE_PROVIDERS[tileKey].url}
-          />
-
-          {/* Leaflet GeoSearch On-Map Control Button */}
-          <GeoSearchMapControl onLocationSelect={handleSelectLocation} />
+          <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} />
 
           <MapController
-            onLocationFound={handleLocationFound}
-            onMapClick={handleMapClick}
-            isLocating={isLocating}
-            setIsLocating={setIsLocating}
             clickMode={clickMode}
+            onLocationFound={handleLocationFound}
+            onLocationError={handleLocationError}
+            onMapClick={handleMapClick}
+            onLocateRequest={startLocate}
           />
 
-          {targetView && (
-            <MapActions targetCenter={targetView.center} targetZoom={targetView.zoom} />
-          )}
-
-          {/* User GPS Pin */}
+          {/* User GPS pin */}
           {userLocation && (
             <>
               <Marker
@@ -697,10 +777,11 @@ export default function InteractiveMap({
                       <span>GPS Position Verified</span>
                     </div>
                     <p className="text-xs text-slate-600 mb-1">
-                      Latitude: {userLocation.lat.toFixed(5)}<br />
+                      Latitude: {userLocation.lat.toFixed(5)}
+                      <br />
                       Longitude: {userLocation.lng.toFixed(5)}
                     </p>
-                    {userLocation.accuracy && (
+                    {userLocation.accuracy !== undefined && (
                       <span className="inline-block text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 font-medium rounded-md">
                         Accuracy: ~{Math.round(userLocation.accuracy)}m
                       </span>
@@ -708,7 +789,7 @@ export default function InteractiveMap({
                   </div>
                 </Popup>
               </Marker>
-              {userLocation.accuracy && (
+              {userLocation.accuracy !== undefined && (
                 <Circle
                   center={[userLocation.lat, userLocation.lng]}
                   radius={userLocation.accuracy}
@@ -723,7 +804,7 @@ export default function InteractiveMap({
             </>
           )}
 
-          {/* Selected Dropped Pin */}
+          {/* Selected pin */}
           {selectedPin && (
             <Marker
               position={[selectedPin.lat, selectedPin.lng]}
@@ -756,7 +837,7 @@ export default function InteractiveMap({
           )}
         </MapContainer>
 
-        {/* Floating Coordinates & Address Badge */}
+        {/* Floating coordinates & address badge */}
         <div className="absolute bottom-5 left-5 z-[1000] pointer-events-auto max-w-xs sm:max-w-md">
           <div className="flex items-center gap-3 px-4 py-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-lg text-xs">
             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
@@ -780,7 +861,7 @@ export default function InteractiveMap({
           </div>
         </div>
 
-        {/* Interactive Floating Tip */}
+        {/* Floating tip */}
         <div className="absolute top-5 right-5 z-[1000] pointer-events-auto hidden md:block">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 backdrop-blur-md text-white rounded-xl shadow-lg text-xs font-medium">
             <Info className="w-3.5 h-3.5 text-indigo-400" />
