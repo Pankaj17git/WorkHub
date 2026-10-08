@@ -11,20 +11,14 @@ import {
   Navigation, 
   KeyRound, 
   CheckCircle2, 
-  Clock, 
-  ShieldCheck, 
-  AlertCircle,
   Sparkles,
-  Loader2
 } from 'lucide-react';
 import OtpPinInput from '@/components/ui/OtpPinInput';
 import { MOCK_INCOMING_REQUESTS } from '@/data/mockWorkerData';
-import PriceTag from '@/components/ui/PriceTag';
 import { getToken } from '@/lib/auth-client';
 
 export default function WorkerJobDetailsExecutionPage() {
   const params = useParams();
-  const router = useRouter();
   const jobId = (params.id as string) || '1';
   const numericId = jobId.replace(/\D/g, '') || '1';
   

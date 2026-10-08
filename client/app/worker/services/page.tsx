@@ -1,16 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { 
-  Wrench, 
   Plus, 
   Check, 
   Edit3, 
   Clock, 
-  DollarSign, 
   ShieldCheck,
-  Zap
 } from 'lucide-react';
 import { MOCK_WORKER_SERVICES } from '@/data/mockWorkerData';
 import { ServiceItem } from '@/types';

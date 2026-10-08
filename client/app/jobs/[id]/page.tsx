@@ -1,24 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useSyncExternalStore, useLayoutEffect } from 'react';
+import React, { useState, useSyncExternalStore, useLayoutEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Briefcase,
   MapPin,
   Calendar,
-  Clock,
-  DollarSign,
   Users,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
   ArrowLeft,
   Send,
   UserCheck,
   MessageSquare,
-  Sparkles,
-  ExternalLink,
   UserPlus
 } from 'lucide-react';
 import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';

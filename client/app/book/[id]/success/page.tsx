@@ -6,13 +6,9 @@ import Link from 'next/link';
 import { 
   CheckCircle2, 
   Calendar, 
-  Clock, 
   MapPin, 
   ShieldCheck, 
-  Phone, 
   ArrowRight, 
-  Download,
-  Share2,
   KeyRound
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';

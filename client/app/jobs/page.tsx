@@ -211,7 +211,6 @@ export default function JobsMarketplacePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredJobs.map((job) => {
             const isAssigned = job.status === 'ASSIGNED' || job.status === 'IN_PROGRESS';
-            const isCompleted = job.status === 'COMPLETED';
 
             return (
               <div

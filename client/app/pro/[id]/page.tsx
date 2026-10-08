@@ -4,23 +4,16 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  ShieldCheck, 
   MapPin, 
   Clock, 
-  Award, 
   Check, 
-  Star, 
   CheckCircle2, 
-  Calendar, 
   ArrowLeft,
   Share2,
   Heart,
-  PhoneCall,
-  Zap
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';
 import { ServiceItem } from '@/types';
-import RatingStars from '@/components/ui/RatingStars';
 import Badge from '@/components/ui/Badge';
 import PriceTag from '@/components/ui/PriceTag';
 import ReviewCard from '@/components/marketplace/ReviewCard';

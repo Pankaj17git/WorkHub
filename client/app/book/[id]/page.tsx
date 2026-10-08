@@ -6,11 +6,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, 
   MapPin, 
-  Calendar, 
-  Clock, 
-  ShieldCheck, 
   Check, 
-  Info,
   Phone,
   FileText
 } from 'lucide-react';
