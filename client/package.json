@@ -7,9 +7,10 @@
     "socket": "node scripts/socket-server.mjs",
     "dev": "node scripts/migrate.mjs && tsx server.js",
     "build": "next build",
-    "start": "node scripts/migrate.mjs && NODE_ENV=production tsx server.js",
+    "start": "node scripts/migrate.mjs && npm run seed:roles && NODE_ENV=production tsx server.js",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
+    "seed:roles": "tsx prisma/seed-roles.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
