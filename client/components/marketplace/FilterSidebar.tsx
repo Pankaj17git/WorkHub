@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Filter,
   Star,
@@ -23,15 +23,18 @@ import {
   Check,
   Briefcase,
   DollarSign,
+  Navigation,
 } from 'lucide-react';
 import { MOCK_CATEGORIES } from '@/data/mockData';
 import api from '@/lib/api';
 import {
   BudgetRange,
   JobFilterStatus,
+  ReverseGeocodeResponse,
   SearchAvailability,
   SkillItem,
 } from '@/types';
+import SearchInput, { GeoLocation, GeoSearchProvider } from '../map/searchInput';
 
 export interface FilterSidebarProps {
   searchMode?: 'workers' | 'jobs';
@@ -155,10 +158,98 @@ export default function FilterSidebar({
   );
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
+  const [locationSearchResults, setLocationSearchResults] = useState<GeoLocation[]>([]);
+  const [isLocating, setIsLocating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const displayedCategories = showAllCategories
     ? skills
     : skills.slice(0, INITIAL_CATEGORY_COUNT);
+
+  const searchProvider = useMemo<GeoSearchProvider>(
+    () => ({
+      async search({ query }: { query: string }) {
+        if (!query || query.trim().length === 0) return [];
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+              query
+            )}&addressdetails=1&limit=6`
+          );
+          if (!res.ok) return [];
+          const data = await res.json();
+          return Array.isArray(data)
+            ? data.map((item: { lon: string; lat: string; display_name: string }) => ({
+                x: parseFloat(item.lon),
+                y: parseFloat(item.lat),
+                label: item.display_name,
+              }))
+            : [];
+        } catch {
+          return [];
+        }
+      },
+    }),
+    []
+  );
+  const handleSelectLocation = (loc: GeoLocation) => {
+    if (!loc.label) {
+      onSelectLocation(`${loc.lat},${loc.lng}`);
+    } else {
+      onSelectLocation(loc.label);
+    }
+  };
+
+  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    const fallback = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+      );
+      if (!res.ok) return fallback;
+      const data = (await res.json()) as ReverseGeocodeResponse;
+      return data.display_name ?? fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const getGeolocationErrorMessage = (err: GeolocationPositionError): string => {
+    switch (err.code) {
+      case err.PERMISSION_DENIED:
+        return 'Location permission denied. Allow location access in your browser settings, or search for a place manually.';
+      case err.POSITION_UNAVAILABLE:
+        return 'Your location is currently unavailable. Please try again or search manually.';
+      case err.TIMEOUT:
+        return 'Locating timed out. Please try again.';
+      default:
+        return 'Could not get your location.';
+    }
+  };
+
+  const startLocate = useCallback(() => {
+    if (!('geolocation' in navigator)) {
+      setErrorMessage('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const label = await reverseGeocode(latitude, longitude);
+        handleSelectLocation({ lat: latitude, lng: longitude, label });
+        setIsLocating(false);
+      },
+      (err) => {
+        setErrorMessage(getGeolocationErrorMessage(err));
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -216,29 +307,16 @@ export default function FilterSidebar({
           <span>Location</span>
         </div>
         <div className="relative">
-          <div className="flex items-center bg-[#ffffff] border border-[#cbd5e1] rounded-xl px-3 py-2 text-xs text-[#091426] focus-within:border-[#0051d5] focus-within:ring-2 focus-within:ring-[#0051d5]/10 transition-all">
-            <input
-              type="text"
-              value={selectedLocation}
-              onChange={(e) => onSelectLocation(e.target.value)}
-              onFocus={() => setLocationDropdownOpen(true)}
-              placeholder="Enter city or area..."
-              className="w-full bg-transparent outline-none text-xs font-medium placeholder-[#94a3b8]"
-            />
-            {selectedLocation ? (
-              <button
-                type="button"
-                onClick={() => onSelectLocation('')}
-                className="text-[#94a3b8] hover:text-[#091426] p-0.5 rounded-full"
-                title="Clear location"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] shrink-0" />
-            )}
-          </div>
-
+          <SearchInput
+            searchProvider={searchProvider}
+            onSelectLocation={handleSelectLocation}
+            onClear={() => onSelectLocation('')}
+            onTypingResult={(result) => {
+              setLocationDropdownOpen(result.length > 0);
+              setLocationSearchResults(result);
+            }}
+            showPopularLocations={false}
+          />
           {locationDropdownOpen && (
             <>
               <div
@@ -249,22 +327,22 @@ export default function FilterSidebar({
                 <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider font-geist">
                   Popular Locations
                 </div>
-                {POPULAR_LOCATIONS.map((loc) => (
+                {locationSearchResults.map((loc) => (
                   <button
-                    key={loc}
+                    key={loc.label}
                     type="button"
                     onClick={() => {
-                      onSelectLocation(loc);
+                      onSelectLocation(loc.label);
                       setLocationDropdownOpen(false);
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs font-medium transition-colors flex items-center justify-between ${
-                      selectedLocation.toLowerCase() === loc.toLowerCase()
+                      selectedLocation.toLowerCase() === loc.label.toLowerCase()
                         ? 'bg-[#eff6ff] text-[#0051d5] font-semibold'
                         : 'text-[#334155] hover:bg-[#f8f9ff]'
                     }`}
                   >
-                    <span>{loc}</span>
-                    {selectedLocation.toLowerCase() === loc.toLowerCase() && (
+                    <span>{loc.label}</span>
+                    {selectedLocation.toLowerCase() === loc.label.toLowerCase() && (
                       <Check className="w-3 h-3 text-[#0051d5]" />
                     )}
                   </button>
@@ -272,6 +350,25 @@ export default function FilterSidebar({
               </div>
             </>
           )}
+          <button
+            id="btn-locate-me"
+            type="button"
+            onClick={startLocate}
+            disabled={isLocating}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-60 rounded-xl shadow-xs transition-all duration-150 cursor-pointer"
+          >
+            {isLocating ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Locating GPS...</span>
+              </>
+            ) : (
+              <>
+                <Navigation className="w-3.5 h-3.5" />
+                <span>My Location</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 

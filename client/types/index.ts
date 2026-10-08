@@ -109,3 +109,5 @@ export * from './client/search';
 export * from './job/job';
 export * from './booking/booking';
 export * from './worker/worker';
+export * from './address/address.types';
+

@@ -101,6 +101,7 @@ function SearchContent() {
       const params = new URLSearchParams();
       params.set('page', String(workerPage));
       params.set('limit', String(workerLimit));
+      params.set('distance', String(maxDistance));
       if (query.trim()) params.set('q', query.trim());
       if (selectedCategories.length > 0) {
         params.set('skill', selectedCategories.join(','));
@@ -189,7 +190,7 @@ function SearchContent() {
     return () => {
       isCancelled = true;
     };
-  }, [workerPage, workerLimit, query, selectedCategories, selectedLocation, sortBy]);
+  }, [workerPage, workerLimit, query, selectedCategories, selectedLocation, sortBy, maxDistance]);
 
   // Fetch real jobs if available, fallback to mock
   useEffect(() => {
