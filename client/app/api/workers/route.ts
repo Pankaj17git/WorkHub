@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
     const sortBy = (SORTS as readonly string[]).includes(sort ?? "")
       ? (sort as FindNearbyWorkersParams["sortBy"])
       : "distance";
-
     const result = await findNearbyWorkers({
       origin: { userId },
       page,

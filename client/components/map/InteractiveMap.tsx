@@ -28,11 +28,21 @@ import {
   Sparkles,
   Info,
   CheckCircle2,
-  Search,
-  Loader2,
   X,
-  MapPinned,
 } from "lucide-react";
+import SearchInput from "./searchInput";
+import {
+  GeoLocation,
+  InteractiveMapLocation,
+  InteractiveMapProps,
+  SelectedPin,
+  UserLocation,
+  ClickMode,
+  NominatimAddress,
+  NominatimResponse,
+} from "@/types/address/address.types";
+
+export type { InteractiveMapLocation, InteractiveMapProps };
 
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                  */
@@ -55,8 +65,6 @@ const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-const SEARCH_DEBOUNCE_MS = 500;
-const SEARCH_MIN_CHARS = 3;
 const GEOCODE_CACHE_LIMIT = 200;
 
 /* -------------------------------------------------------------------------- */
@@ -107,66 +115,6 @@ const createWorkHubIcon = (color: string): L.DivIcon =>
 const defaultPinIcon = createWorkHubIcon("#2563eb");
 const userLocationIcon = createWorkHubIcon("#10b981");
 
-/* -------------------------------------------------------------------------- */
-/* Types                                                                      */
-/* -------------------------------------------------------------------------- */
-
-export interface InteractiveMapLocation {
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-}
-
-export interface InteractiveMapProps {
-  initialLat?: number;
-  initialLng?: number;
-  initialAddress?: string;
-  onLocationSelect?: (location: InteractiveMapLocation) => void;
-  onError?: (message: string) => void;
-  height?: string;
-}
-
-interface SelectedPin {
-  lat: number;
-  lng: number;
-  label?: string;
-}
-
-interface UserLocation {
-  lat: number;
-  lng: number;
-  accuracy?: number;
-}
-
-interface SearchResultItem {
-  lat: number;
-  lng: number;
-  label: string;
-}
-
-type ClickMode = "pin" | "locate";
-
-interface NominatimAddress {
-  road?: string;
-  suburb?: string;
-  neighbourhood?: string;
-  amenity?: string;
-  city?: string;
-  town?: string;
-  village?: string;
-  county?: string;
-  state_district?: string;
-  state?: string;
-  country?: string;
-}
-
-interface NominatimResponse {
-  display_name?: string;
-  address?: NominatimAddress;
-}
 
 /* -------------------------------------------------------------------------- */
 /* Reverse geocoding (cached, abortable)                                      */
@@ -327,16 +275,7 @@ export default function InteractiveMap({
   const [clickMode, setClickMode] = useState<ClickMode>("pin");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const geoAbortRef = useRef<AbortController | null>(null);
-  // Query text we set programmatically; the debounced search skips it
-  const programmaticQueryRef = useRef<string>("");
 
   const searchProvider = useMemo(() => new OpenStreetMapProvider(), []);
 
@@ -349,11 +288,6 @@ export default function InteractiveMap({
     },
     [onError],
   );
-
-  const setQueryProgrammatically = useCallback((text: string) => {
-    programmaticQueryRef.current = text.trim();
-    setSearchQuery(text);
-  }, []);
 
   /** Reverse geocode, aborting any previous in-flight request. */
   const resolveLocation = useCallback(
@@ -427,8 +361,6 @@ export default function InteractiveMap({
       setErrorMessage(null);
       setSelectedPin({ lat, lng, label });
       map?.flyTo([lat, lng], 16, { duration: 1.2 });
-      setQueryProgrammatically(label.split(",").slice(0, 2).join(",").trim());
-      setShowDropdown(false);
 
       if (onLocationSelect) {
         const details = await resolveLocation(lat, lng);
@@ -444,110 +376,34 @@ export default function InteractiveMap({
         onLocationSelect(merged);
       }
     },
-    [map, onLocationSelect, resolveLocation, setQueryProgrammatically],
+    [map, onLocationSelect, resolveLocation],
   );
 
   const handleReset = useCallback(() => {
     map?.flyTo(initialCenter, DEFAULT_ZOOM, { duration: 1.2 });
     setSelectedPin(initialPin);
-    setQueryProgrammatically("");
-    setSearchResults([]);
-    setShowDropdown(false);
     setErrorMessage(null);
-  }, [map, initialCenter, initialPin, setQueryProgrammatically]);
+  }, [map, initialCenter, initialPin]);
 
-  /* ---------------------------- search ---------------------------- */
-
-  // Debounced autocomplete
-  useEffect(() => {
-    const query = searchQuery.trim();
-
-    if (query === programmaticQueryRef.current) return; // set by a selection, don't re-search
-    if (query.length < SEARCH_MIN_CHARS) {
-      setSearchResults([]);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
+  const handleChipClick = useCallback(
+    async (chip: string) => {
       try {
-        const results = await searchProvider.search({ query });
-        if (cancelled) return;
-        setSearchResults(
-          results
-            .slice(0, 6)
-            .map((r) => ({ lat: r.y, lng: r.x, label: r.label })),
-        );
-        setShowDropdown(results.length > 0);
-      } catch (err) {
-        if (!cancelled) console.error("GeoSearch error:", err);
-      } finally {
-        if (!cancelled) setIsSearching(false);
-      }
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [searchQuery, searchProvider]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const runSearch = useCallback(
-    async (rawQuery: string) => {
-      const query = rawQuery.trim();
-      if (!query) return;
-
-      setIsSearching(true);
-      try {
-        const results = await searchProvider.search({ query });
+        const results = await searchProvider.search({ query: chip });
         const top = results[0];
         if (top) {
           await handleSelectLocation(top.y, top.x, top.label);
         } else {
           reportError(
-            `No location found for "${query}". Try another landmark or address.`,
+            `No location found for "${chip}". Try another landmark or address.`,
           );
         }
       } catch (err) {
-        console.error("GeoSearch submit error:", err);
+        console.error("GeoSearch chip error:", err);
         reportError("Search failed. Please try again.");
-      } finally {
-        setIsSearching(false);
       }
     },
     [searchProvider, handleSelectLocation, reportError],
   );
-
-  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    void runSearch(searchQuery);
-  };
-
-  const handleChipClick = (chip: string) => {
-    setQueryProgrammatically(chip); // prevents the debounced effect from double-fetching
-    void runSearch(chip);
-  };
-
-  const clearSearch = () => {
-    setQueryProgrammatically("");
-    setSearchResults([]);
-    setShowDropdown(false);
-  };
 
   /* ---------------------------- render ---------------------------- */
 
@@ -556,90 +412,14 @@ export default function InteractiveMap({
       {/* Top Search & Controls Panel */}
       <div className="flex flex-col gap-3 p-4 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-sm">
         {/* Search bar */}
-        <div className="relative w-full" ref={dropdownRef}>
-          <form
-            onSubmit={handleSearchSubmit}
-            className="relative flex items-center w-full"
-          >
-            <div className="absolute left-3.5 flex items-center pointer-events-none text-slate-400">
-              {isSearching ? (
-                <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4 text-indigo-600" />
-              )}
-            </div>
-
-            <input
-              id="map-geosearch-input"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => {
-                if (searchResults.length > 0) setShowDropdown(true);
-              }}
-              placeholder="Search address, landmark, or city (e.g. GR Tower Mohali, London, New York)..."
-              className="w-full pl-10 pr-28 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 placeholder-slate-400 font-medium rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
-            />
-
-            <div className="absolute right-2 flex items-center gap-1.5">
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
-                  title="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <button
-                type="submit"
-                disabled={isSearching || !searchQuery.trim()}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 rounded-lg shadow-xs transition-all cursor-pointer"
-              >
-                Search
-              </button>
-            </div>
-          </form>
-
-          {/* Autocomplete dropdown */}
-          {showDropdown && searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-slate-200/90 shadow-xl overflow-hidden z-[2000] max-h-72 overflow-y-auto">
-              <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px] font-semibold text-slate-500 flex items-center justify-between">
-                <span>Nominatim GeoSearch Results</span>
-                <span className="text-[10px] text-slate-400">
-                  Powered by leaflet-geosearch
-                </span>
-              </div>
-              <ul className="divide-y divide-slate-100">
-                {searchResults.map((res, index) => (
-                  <li key={`${res.lat}-${res.lng}-${index}`}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void handleSelectLocation(res.lat, res.lng, res.label)
-                      }
-                      className="w-full px-3.5 py-2.5 text-left hover:bg-indigo-50/60 flex items-start gap-2.5 transition-colors cursor-pointer group"
-                    >
-                      <MapPinned className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-indigo-700">
-                          {res.label.split(",")[0]}
-                        </p>
-                        <p className="text-[11px] text-slate-500 truncate">
-                          {res.label}
-                        </p>
-                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                          {res.lat.toFixed(5)}, {res.lng.toFixed(5)}
-                        </p>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        <SearchInput
+          searchProvider={searchProvider}
+          onSelectLocation={(loc: GeoLocation) =>
+            void handleSelectLocation(loc.lat, loc.lng, loc.label)
+          }
+          placeholder="Search address, landmark, or city (e.g. GR Tower Mohali, London, New York)..."
+          showPopularLocations={true}
+        />
 
         {/* Quick search chips */}
         <div className="flex items-center gap-1.5 flex-wrap">
