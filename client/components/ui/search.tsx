@@ -29,6 +29,7 @@ import {
   RawWorkerItem,
   RawWorkerService,
   RawJobPosting,
+  RawNearbyJobItem,
   JobSkillItem,
   SearchSortOption,
   SearchAvailability,
@@ -64,9 +65,12 @@ function SearchContent() {
   const [workerTotalPages, setWorkerTotalPages] = useState(1);
   const [isWorkersLoading, setIsWorkersLoading] = useState(false);
 
-  // Pagination states for Jobs (client-side)
+  // Pagination states for Jobs (server-side — mirrors workers)
   const [jobPage, setJobPage] = useState(1);
   const [jobLimit, setJobLimit] = useState(6);
+  const [jobTotal, setJobTotal] = useState(0);
+  const [jobTotalPages, setJobTotalPages] = useState(1);
+  const [isJobsLoading, setIsJobsLoading] = useState(false);
 
   // Categories & Filters
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -192,48 +196,114 @@ function SearchContent() {
     };
   }, [workerPage, workerLimit, query, selectedCategories, selectedLocation, sortBy, maxDistance]);
 
-  // Fetch real jobs if available, fallback to mock
+  /**
+   * Fetch nearby jobs from the backend with filter params and server-side pagination.
+   * Mirrors the fetchWorkers effect — sends skill, distance, status, budget, sort,
+   * page, limit, and query to GET /api/jobs, then maps the strongly-typed
+   * RawNearbyJobItem[] response into MockJobPosting[] for the UI.
+   */
   useEffect(() => {
     let isCancelled = false;
 
     async function fetchJobs() {
+      setIsJobsLoading(true);
+
+      /* ── Build query params (same pattern as fetchWorkers) ───────── */
+      const params = new URLSearchParams();
+      params.set('page', String(jobPage));
+      params.set('limit', String(jobLimit));
+      params.set('distance', String(maxDistance));
+
+      if (query.trim()) params.set('q', query.trim());
+
+      if (selectedCategories.length > 0) {
+        params.set('skill', selectedCategories.join(','));
+      }
+
+      if (selectedLocation && selectedLocation.trim() && !selectedLocation.toLowerCase().includes('all')) {
+        params.set('city', selectedLocation.trim());
+      }
+
+      /* Map job-specific status filter to API param */
+      if (jobStatus && jobStatus !== 'ALL') {
+        params.set('status', jobStatus);
+      }
+
+      /* Map budget range to minAmount/maxAmount for the API */
+      if (budgetRange === 'LOW') {
+        params.set('maxAmount', '500');
+      } else if (budgetRange === 'MID') {
+        params.set('minAmount', '500');
+        params.set('maxAmount', '2000');
+      } else if (budgetRange === 'HIGH') {
+        params.set('minAmount', '2000');
+      }
+
+      /* Map sortBy (frontend labels) to backend sort param */
+      if (sortBy && sortBy !== 'recommended') {
+        const sortMap: Record<string, string> = {
+          price_low: 'budget_low',
+          price_high: 'budget_high',
+          distance: 'distance',
+          recent: 'recent',
+        };
+        params.set('sort', sortMap[sortBy] || 'distance');
+      }
+
       try {
-        const res = await fetch('/api/jobs');
+        const res = await fetch(`/api/jobs?${params.toString()}`);
         const data = res.ok ? await res.json() : null;
         if (isCancelled) return;
 
-        const rawJobs: RawJobPosting[] = data?.jobs || data?.data?.jobs || [];
-        if (rawJobs && rawJobs.length > 0) {
-          const apiJobs: MockJobPosting[] = rawJobs.map((j: RawJobPosting) => ({
+        /* ── Parse the server response (nearby-jobs paginated format) ─ */
+        const rawJobs: RawNearbyJobItem[] = data?.data || [];
+
+        if (rawJobs.length > 0) {
+          const apiJobs: MockJobPosting[] = rawJobs.map((j: RawNearbyJobItem) => ({
             id: j.id,
             title: j.title,
             category: j.serviceName || 'General Trade',
-            customerName: j.customer?.name || j.customerName || 'Customer Request',
+            customerName: j.customer?.name || 'Customer Request',
             customerAvatar:
-              j.customerAvatar ||
               'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-            location: j.address?.city || j.location || 'Chandigarh',
-            distanceKm: j.distanceKm || 3.5,
-            postedAt: j.postedAt || 'Just now',
+            location: j.address?.city || 'Chandigarh',
+            distanceKm: j.distance ?? 3.5,
+            postedAt: 'Just now',
             status: j.status === 'OPEN' ? 'OPEN' : 'IN_PROGRESS',
-            minBudget: j.minAmount || j.minBudget || 500,
-            maxBudget: j.maxAmount || j.maxBudget || 1500,
+            minBudget: j.minAmount ?? 500,
+            maxBudget: j.maxAmount ?? 1500,
             requiredWorkers: j.requiredWorkers || 1,
             description: j.description || 'No description provided.',
-            skills: Array.isArray(j.skills)
-              ? j.skills.map((s: JobSkillItem) => (typeof s === 'string' ? s : s.name))
-              : ['Repairs', 'Maintenance'],
+            skills: Array.isArray(j.skills) ? j.skills : ['Repairs', 'Maintenance'],
           }));
 
-          setJobsList((prev) => {
-            const existingIds = new Set(apiJobs.map((j) => j.id));
-            const filteredMock = prev.filter((p) => !existingIds.has(p.id));
-            return [...apiJobs, ...filteredMock];
-          });
+          setJobsList(apiJobs);
+
+          /* Update server-side pagination metadata */
+          if (data?.meta) {
+            setJobTotal(data.meta.total);
+            setJobTotalPages(data.meta.totalPages);
+          }
+        } else {
+          setJobsList([]);
+          if (data?.meta) {
+            setJobTotal(data.meta.total);
+            setJobTotalPages(data.meta.totalPages);
+          } else {
+            setJobTotal(0);
+            setJobTotalPages(1);
+          }
         }
       } catch (err) {
+        if (isCancelled) return;
+        console.error('Failed to load jobs:', err);
+        /* Fallback to mock data on network error */
+        setJobsList(MOCK_JOB_POSTINGS.slice(0, jobLimit));
+        setJobTotal(MOCK_JOB_POSTINGS.length);
+        setJobTotalPages(Math.ceil(MOCK_JOB_POSTINGS.length / jobLimit));
+      } finally {
         if (!isCancelled) {
-          console.error('Failed to load jobs:', err);
+          setIsJobsLoading(false);
         }
       }
     }
@@ -242,7 +312,8 @@ function SearchContent() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [jobPage, jobLimit, query, selectedCategories, selectedLocation, sortBy, maxDistance, jobStatus, budgetRange]);
+
 
   // Category toggle handler
   const handleToggleCategory = (cat: string) => {
@@ -318,88 +389,24 @@ function SearchContent() {
   }, [prosList, minRating, selectedExperience, maxDistance, sortBy]);
 
   // Filtered Job Openings (Worker Mode)
+  // The backend already handles skill matching, geo-radius filtering, budget, and search query.
+  // We keep distance and sorting guardrails here, mirroring the customer mode pattern.
   const filteredJobs = useMemo(() => {
     return jobsList
       .filter((job) => {
-        // Query search
-        if (query.trim()) {
-          const q = query.toLowerCase();
-          const matchTitle = job.title.toLowerCase().includes(q);
-          const matchDesc = job.description.toLowerCase().includes(q);
-          const matchCategory = job.category.toLowerCase().includes(q);
-          const matchSkill = job.skills.some((s) => s.toLowerCase().includes(q));
-          if (!matchTitle && !matchDesc && !matchCategory && !matchSkill) return false;
-        }
-
-        // Location filter (from sidebar)
-        if (selectedLocation.trim()) {
-          const loc = selectedLocation.toLowerCase();
-          const jobLoc = job.location.toLowerCase();
-          if (!jobLoc.includes(loc)) {
-            const parts = loc.split(',').map((p) => p.trim());
-            const matchesAnyPart = parts.some((p) => jobLoc.includes(p));
-            if (!matchesAnyPart) return false;
-          }
-        }
-
-        // Category filter
-        if (selectedCategories.length > 0) {
-          const matchesCategory = selectedCategories.some((cat) => {
-            const c = cat.toLowerCase();
-            const cFormatted = c.replace(/_/g, ' ');
-            const jobCat = (job.category || '').toLowerCase();
-            const matchesCat = jobCat.includes(c) || jobCat.includes(cFormatted);
-            const matchesSkill = (job.skills || []).some((s) => {
-              const sLow = s.toLowerCase();
-              return sLow.includes(c) || sLow.includes(cFormatted);
-            });
-            return matchesCat || matchesSkill;
-          });
-          if (!matchesCategory) return false;
-        }
-
-        // Status filter
-        if (jobStatus !== 'ALL') {
-          if (jobStatus === 'URGENT' && job.status !== 'URGENT') return false;
-          if (jobStatus === 'OPEN' && job.status !== 'OPEN') return false;
-        }
-
-        // Budget Range filter
-        if (budgetRange !== 'ALL') {
-          if (budgetRange === 'LOW' && job.maxBudget > 500) return false;
-          if (budgetRange === 'MID' && (job.maxBudget < 500 || job.minBudget > 2000)) return false;
-          if (budgetRange === 'HIGH' && job.maxBudget < 2000) return false;
-        }
-
-        // Distance filter
-        if ((job.distanceKm || 2) > maxDistance) {
+        // Distance filter guardrail
+        if (job.distanceKm !== undefined && job.distanceKm > maxDistance) {
           return false;
         }
-
         return true;
       })
       .sort((a, b) => {
         if (sortBy === 'price_high') return b.maxBudget - a.maxBudget;
         if (sortBy === 'price_low') return a.minBudget - b.minBudget;
-        if (sortBy === 'distance') return a.distanceKm - b.distanceKm;
+        if (sortBy === 'distance') return (a.distanceKm ?? 0) - (b.distanceKm ?? 0);
         return 0; // default order
       });
-  }, [
-    jobsList,
-    query,
-    selectedLocation,
-    selectedCategories,
-    jobStatus,
-    budgetRange,
-    maxDistance,
-    sortBy,
-  ]);
-
-  // Paginated Job Openings (Worker Mode)
-  const paginatedJobs = useMemo(() => {
-    const start = (jobPage - 1) * jobLimit;
-    return filteredJobs.slice(start, start + jobLimit);
-  }, [filteredJobs, jobPage, jobLimit]);
+  }, [jobsList, maxDistance, sortBy]);
 
   const hasActiveFilters =
     query !== '' ||
@@ -857,7 +864,13 @@ function SearchContent() {
             )
           ) : (
             /* --- WORKER MODE: JOB OPENINGS LIST / GRID --- */
-            filteredJobs.length === 0 ? (
+            isJobsLoading ? (
+              <div className="p-16 text-center bg-white border border-[#e2e8f0] rounded-2xl flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#0051d5]" />
+                <p className="text-sm font-semibold text-[#091426]">Loading nearby jobs...</p>
+                <p className="text-xs text-[#64748b]">Fetching relevant jobs matching your skills and location</p>
+              </div>
+            ) : filteredJobs.length === 0 ? (
               <div className="p-12 text-center bg-white border border-[#e2e8f0] rounded-2xl space-y-4">
                 <div className="w-16 h-16 rounded-full bg-[#eff6ff] text-[#0051d5] flex items-center justify-center mx-auto">
                   <Briefcase className="w-8 h-8" />
@@ -889,23 +902,23 @@ function SearchContent() {
               <div className="space-y-6">
                 {viewMode === 'list' ? (
                   <div className="space-y-4">
-                    {paginatedJobs.map((job) => (
+                    {filteredJobs.map((job) => (
                       <JobSearchCard key={job.id} job={job} viewMode="list" />
                     ))}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {paginatedJobs.map((job) => (
+                    {filteredJobs.map((job) => (
                       <JobSearchCard key={job.id} job={job} viewMode="grid" />
                     ))}
                   </div>
                 )}
 
-                {/* Reusable Pagination for Jobs */}
+                {/* Reusable Pagination for Jobs (Server-Side) */}
                 <Pagination
                   currentPage={jobPage}
-                  totalPages={Math.ceil(filteredJobs.length / jobLimit) || 1}
-                  totalItems={filteredJobs.length}
+                  totalPages={jobTotalPages}
+                  totalItems={jobTotal}
                   pageSize={jobLimit}
                   pageSizeOptions={[6, 12, 24]}
                   onPageChange={(newPage) => {
@@ -916,6 +929,7 @@ function SearchContent() {
                     setJobLimit(newLimit);
                     setJobPage(1);
                   }}
+                  isLoading={isJobsLoading}
                   itemLabel="job openings"
                 />
               </div>

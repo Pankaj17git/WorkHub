@@ -1,5 +1,21 @@
 'use client';
 
+/**
+ * FilterSidebar.tsx
+ *
+ * Comprehensive filter sidebar for the marketplace search experience.
+ * Supports dual-mode operation:
+ *  1. Customer Mode (searchMode === 'workers')
+ *     - Filters professionals/workers by category, experience level, availability,
+ *       minimum rating, and geo-distance radius.
+ *     - Maps to `GET /api/workers` query parameters.
+ *
+ *  2. Worker Mode (searchMode === 'jobs')
+ *     - Filters nearby open jobs matching the worker's trade/skills, budget range,
+ *       job status (Open, Urgent, All), and radius from their address/GPS.
+ *     - Maps to `GET /api/jobs` query parameters with spatial search via `findNearbyJobs`.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Filter,
@@ -9,7 +25,6 @@ import {
   Calendar,
   Award,
   Compass,
-  X,
   ChevronDown,
   ChevronUp,
   Zap,
@@ -24,6 +39,8 @@ import {
   Briefcase,
   DollarSign,
   Navigation,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import { MOCK_CATEGORIES } from '@/data/mockData';
 import api from '@/lib/api';
@@ -36,36 +53,54 @@ import {
 } from '@/types';
 import SearchInput, { GeoLocation, GeoSearchProvider } from '../map/searchInput';
 
+/* ─── Types & Component Props ─────────────────────────────────────────────── */
+
 export interface FilterSidebarProps {
+  /** Dual-mode flag: 'workers' for customer search, 'jobs' for worker job search */
   searchMode?: 'workers' | 'jobs';
-  // Location
+
+  /* ── Location Filtering ── */
+  /** Current selected location query string (city name or "lat,lng") */
   selectedLocation: string;
+  /** Callback fired when user selects or updates location */
   onSelectLocation: (loc: string) => void;
-  // Category
+
+  /* ── Category / Skills Filtering ── */
+  /** Array of active category keys/slugs selected */
   selectedCategories: string[];
+  /** Callback to toggle selection of a category */
   onToggleCategory: (cat: string) => void;
-  // Availability
+
+  /* ── Customer Mode: Worker Availability ── */
   availability: SearchAvailability;
   onSelectAvailability: (avail: SearchAvailability) => void;
-  // Experience
+
+  /* ── Customer Mode: Experience Level ── */
   selectedExperience: string[];
   onToggleExperience: (exp: string) => void;
-  // Rating
+
+  /* ── Customer Mode: Minimum Rating ── */
   minRating: number;
   onSelectRating: (rating: number) => void;
-  // Distance
+
+  /* ── Geo Proximity: Distance Radius (km) ── */
   maxDistance: number;
   onDistanceChange: (km: number) => void;
-  // Job Specific
+
+  /* ── Worker Mode: Job Status & Budget Filters ── */
   jobStatus?: JobFilterStatus;
   onSelectJobStatus?: (status: JobFilterStatus) => void;
   budgetRange?: BudgetRange;
   onSelectBudgetRange?: (b: BudgetRange) => void;
-  // Reset
+
+  /* ── Reset All Filters ── */
   onReset: () => void;
 }
 
-const POPULAR_LOCATIONS = [
+/* ─── Default Constants & Preset Lists ───────────────────────────────────── */
+
+/** Popular service locations used for quick-selection suggestions */
+const POPULAR_LOCATIONS: string[] = [
   'Chandigarh',
   'Sector 17, Chandigarh',
   'Sector 22, Chandigarh',
@@ -78,8 +113,10 @@ const POPULAR_LOCATIONS = [
   'Bengaluru',
 ];
 
+/** Number of categories visible before expanding "Show more" */
+const INITIAL_CATEGORY_COUNT = 7;
 
-
+/** Map of normalized category keys to appropriate UI trade icons */
 const CATEGORY_ICON_MAP: Record<string, React.ReactNode> = {
   electrician: <Zap className="w-3.5 h-3.5 text-[#0051d5]" />,
   electricians: <Zap className="w-3.5 h-3.5 text-[#0051d5]" />,
@@ -111,7 +148,8 @@ const CATEGORY_ICON_MAP: Record<string, React.ReactNode> = {
   inverter_technician: <Cpu className="w-3.5 h-3.5 text-[#6366f1]" />,
 };
 
-function getCategoryIcon(key?: string, name?: string) {
+/** Resolves an icon for a category key or display name */
+function getCategoryIcon(key?: string, name?: string): React.ReactNode {
   const normalizedKey = key ? key.toLowerCase().trim() : '';
   const normalizedName = name ? name.toLowerCase().trim() : '';
 
@@ -121,13 +159,10 @@ function getCategoryIcon(key?: string, name?: string) {
   if (normalizedName && CATEGORY_ICON_MAP[normalizedName]) {
     return CATEGORY_ICON_MAP[normalizedName];
   }
-  if (name && CATEGORY_ICON_MAP[name]) {
-    return CATEGORY_ICON_MAP[name];
-  }
   return <Layers className="w-3.5 h-3.5 text-[#64748b]" />;
 }
 
-const INITIAL_CATEGORY_COUNT = 7;
+/* ─── Main Component ──────────────────────────────────────────────────────── */
 
 export default function FilterSidebar({
   searchMode = 'workers',
@@ -149,6 +184,7 @@ export default function FilterSidebar({
   onSelectBudgetRange,
   onReset,
 }: FilterSidebarProps) {
+  /* ── 1. Skills / Categories State ── */
   const [skills, setSkills] = useState<SkillItem[]>(() =>
     MOCK_CATEGORIES.map((cat) => ({
       id: cat.id,
@@ -157,15 +193,19 @@ export default function FilterSidebar({
     }))
   );
   const [showAllCategories, setShowAllCategories] = useState(false);
+
+  /* ── 2. Location & Geocoding State ── */
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const [locationSearchResults, setLocationSearchResults] = useState<GeoLocation[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  /** Visible category list based on expand/collapse toggle */
   const displayedCategories = showAllCategories
     ? skills
     : skills.slice(0, INITIAL_CATEGORY_COUNT);
 
+  /* ── 3. OpenStreetMap Nominatim Geosearch Provider ── */
   const searchProvider = useMemo<GeoSearchProvider>(
     () => ({
       async search({ query }: { query: string }) {
@@ -192,6 +232,8 @@ export default function FilterSidebar({
     }),
     []
   );
+
+  /** Location selection handler */
   const handleSelectLocation = (loc: GeoLocation) => {
     if (!loc.label) {
       onSelectLocation(`${loc.lat},${loc.lng}`);
@@ -200,11 +242,12 @@ export default function FilterSidebar({
     }
   };
 
+  /** Reverse geocoding helper to convert coordinates to a readable address string */
   const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
     const fallback = `${lat.toFixed(5)},${lng.toFixed(5)}`;
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
       );
       if (!res.ok) return fallback;
       const data = (await res.json()) as ReverseGeocodeResponse;
@@ -214,19 +257,21 @@ export default function FilterSidebar({
     }
   };
 
+  /** Formats human-friendly geolocation error messages */
   const getGeolocationErrorMessage = (err: GeolocationPositionError): string => {
     switch (err.code) {
       case err.PERMISSION_DENIED:
-        return 'Location permission denied. Allow location access in your browser settings, or search for a place manually.';
+        return 'Location permission denied. Please allow access in your browser or search manually.';
       case err.POSITION_UNAVAILABLE:
-        return 'Your location is currently unavailable. Please try again or search manually.';
+        return 'GPS position unavailable. Please search for your city or address manually.';
       case err.TIMEOUT:
-        return 'Locating timed out. Please try again.';
+        return 'GPS locate timed out. Please try again.';
       default:
-        return 'Could not get your location.';
+        return 'Could not determine your location.';
     }
   };
 
+  /** HTML5 Geolocation trigger */
   const startLocate = useCallback(() => {
     if (!('geolocation' in navigator)) {
       setErrorMessage('Geolocation is not supported by your browser.');
@@ -247,10 +292,11 @@ export default function FilterSidebar({
         setErrorMessage(getGeolocationErrorMessage(err));
         setIsLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   }, []);
 
+  /* ── 4. Fetch dynamic skills/categories from backend ── */
   useEffect(() => {
     let isMounted = true;
     async function fetchSkills() {
@@ -282,9 +328,11 @@ export default function FilterSidebar({
     };
   }, []);
 
+  /* ── 5. Render Filter Layout ────────────────────────────────────────────── */
+
   return (
     <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-2xl p-5 md:p-6 space-y-6 shadow-xs">
-      {/* Header */}
+      {/* ── SECTION HEADER & RESET ACTION ── */}
       <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-[#0051d5]" />
@@ -294,18 +342,30 @@ export default function FilterSidebar({
         </div>
         <button
           onClick={onReset}
-          className="text-xs text-[#0051d5] hover:text-[#003db3] hover:underline font-semibold transition-colors"
+          className="text-xs text-[#0051d5] hover:text-[#003db3] hover:underline font-semibold transition-colors cursor-pointer"
         >
           Reset All
         </button>
       </div>
 
-      {/* 1. Location Selection (Only in Sidebar) */}
+      {/* ── SECTION 1: LOCATION SEARCH & GEOLOCATION ── */}
       <div className="space-y-2">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
-          <MapPin className="w-3.5 h-3.5 text-[#0051d5]" />
-          <span>Location</span>
+        <div className="flex items-center justify-between text-xs font-bold text-[#091426]">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-[#0051d5]" />
+            <span>Location</span>
+          </div>
+          {selectedLocation && (
+            <button
+              type="button"
+              onClick={() => onSelectLocation('')}
+              className="text-[11px] font-medium text-[#64748b] hover:text-[#091426] cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
         </div>
+
         <div className="relative">
           <SearchInput
             searchProvider={searchProvider}
@@ -317,6 +377,8 @@ export default function FilterSidebar({
             }}
             showPopularLocations={false}
           />
+
+          {/* Autocomplete / Suggested Location Dropdown */}
           {locationDropdownOpen && (
             <>
               <div
@@ -325,11 +387,11 @@ export default function FilterSidebar({
               />
               <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#e2e8f0] rounded-xl shadow-lg z-20 py-1.5 max-h-48 overflow-y-auto">
                 <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider font-geist">
-                  Popular Locations
+                  Suggested Locations
                 </div>
                 {locationSearchResults.map((loc) => (
                   <button
-                    key={loc.label}
+                    key={`${loc.lat}-${loc.lng}-${loc.label}`}
                     type="button"
                     onClick={() => {
                       onSelectLocation(loc.label);
@@ -341,47 +403,71 @@ export default function FilterSidebar({
                         : 'text-[#334155] hover:bg-[#f8f9ff]'
                     }`}
                   >
-                    <span>{loc.label}</span>
+                    <span className="truncate">{loc.label}</span>
                     {selectedLocation.toLowerCase() === loc.label.toLowerCase() && (
-                      <Check className="w-3 h-3 text-[#0051d5]" />
+                      <Check className="w-3 h-3 text-[#0051d5] shrink-0" />
                     )}
                   </button>
                 ))}
               </div>
             </>
           )}
-          <button
-            id="btn-locate-me"
-            type="button"
-            onClick={startLocate}
-            disabled={isLocating}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-60 rounded-xl shadow-xs transition-all duration-150 cursor-pointer"
-          >
-            {isLocating ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Locating GPS...</span>
-              </>
-            ) : (
-              <>
-                <Navigation className="w-3.5 h-3.5" />
-                <span>My Location</span>
-              </>
-            )}
-          </button>
+
+          {/* Geolocation Button */}
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <button
+              id="btn-locate-me"
+              type="button"
+              onClick={startLocate}
+              disabled={isLocating}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-60 rounded-xl shadow-xs transition-all duration-150 cursor-pointer"
+            >
+              {isLocating ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Locating GPS...</span>
+                </>
+              ) : (
+                <>
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>My Location</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Geolocation Error Feedback */}
+          {errorMessage && (
+            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-1.5 text-[11px] text-amber-800">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+              <span className="flex-1">{errorMessage}</span>
+              <button
+                type="button"
+                onClick={() => setErrorMessage(null)}
+                className="text-amber-500 hover:text-amber-700 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 2. Service Category */}
+      {/* ── SECTION 2: SERVICE CATEGORY & TRADE SKILLS ── */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
             <Layers className="w-3.5 h-3.5 text-[#0051d5]" />
             <span>Service Category</span>
           </div>
+          {selectedCategories.length > 0 && (
+            <span className="text-[10px] font-bold bg-[#eff6ff] text-[#0051d5] px-2 py-0.5 rounded-full">
+              {selectedCategories.length} selected
+            </span>
+          )}
         </div>
 
-        {/* Category Dropdown quick-select */}
+        {/* Quick Dropdown Selector */}
         <select
           value={
             selectedCategories.length === 1
@@ -393,16 +479,15 @@ export default function FilterSidebar({
           onChange={(e) => {
             const val = e.target.value;
             if (val === 'all') {
-              // clear categories
               skills.forEach((c) => {
                 if (selectedCategories.includes(c.key) || selectedCategories.includes(c.name)) {
                   onToggleCategory(c.key);
                 }
               });
             } else {
-              // Set only this category
               skills.forEach((c) => {
-                const isSelected = selectedCategories.includes(c.key) || selectedCategories.includes(c.name);
+                const isSelected =
+                  selectedCategories.includes(c.key) || selectedCategories.includes(c.name);
                 if (c.key === val && !isSelected) onToggleCategory(c.key);
                 if (c.key !== val && isSelected) onToggleCategory(c.key);
               });
@@ -421,15 +506,12 @@ export default function FilterSidebar({
         {/* Checkbox Category List */}
         <div
           className={`space-y-2 pt-1 transition-all ${
-            showAllCategories
-              ? 'max-h-60 overflow-y-auto pr-1 overscroll-contain'
-              : ''
+            showAllCategories ? 'max-h-60 overflow-y-auto pr-1 overscroll-contain' : ''
           }`}
         >
           {displayedCategories.map((cat) => {
             const isChecked =
-              selectedCategories.includes(cat.key) ||
-              selectedCategories.includes(cat.name);
+              selectedCategories.includes(cat.key) || selectedCategories.includes(cat.name);
             return (
               <label
                 key={String(cat.id ?? cat.key)}
@@ -441,10 +523,12 @@ export default function FilterSidebar({
                   onChange={() => onToggleCategory(cat.key)}
                   className="w-4 h-4 rounded border-[#cbd5e1] text-[#0051d5] focus:ring-[#0051d5] cursor-pointer accent-[#0051d5]"
                 />
-                <span className="shrink-0">
-                  {getCategoryIcon(cat.key, cat.name)}
-                </span>
-                <span className={`flex-1 truncate ${isChecked ? 'font-semibold text-[#091426]' : 'font-normal'}`}>
+                <span className="shrink-0">{getCategoryIcon(cat.key, cat.name)}</span>
+                <span
+                  className={`flex-1 truncate ${
+                    isChecked ? 'font-semibold text-[#091426]' : 'font-normal'
+                  }`}
+                >
                   {cat.name}
                 </span>
               </label>
@@ -452,6 +536,7 @@ export default function FilterSidebar({
           })}
         </div>
 
+        {/* Expand / Collapse Category List */}
         {skills.length > INITIAL_CATEGORY_COUNT && (
           <button
             type="button"
@@ -472,109 +557,108 @@ export default function FilterSidebar({
         )}
       </div>
 
-      {/* 3. Availability (Customer mode) */}
+      {/* ── SECTION 3: CUSTOMER MODE FILTERS (WORKER AVAILABILITY & EXPERIENCE) ── */}
       {searchMode === 'workers' && (
-        <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
-            <Calendar className="w-3.5 h-3.5 text-[#0051d5]" />
-            <span>Availability</span>
-          </div>
-          <div className="grid grid-cols-4 gap-1 bg-[#f8f9ff] p-1 rounded-xl border border-[#e2e8f0]">
-            {(
-              [
-                { label: 'Any', value: 'any' },
-                { label: 'Today', value: 'today' },
-                { label: 'This Week', value: 'this_week' },
-                { label: 'Custom', value: 'custom' },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => onSelectAvailability(item.value)}
-                className={`py-1.5 text-[11px] font-semibold rounded-lg transition-all text-center ${
-                  availability === item.value
-                    ? 'bg-[#0051d5] text-white shadow-xs'
-                    : 'text-[#64748b] hover:text-[#091426]'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 4. Experience Level (Customer mode) */}
-      {searchMode === 'workers' && (
-        <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
-            <Award className="w-3.5 h-3.5 text-[#0051d5]" />
-            <span>Experience Level</span>
-          </div>
-          <div className="space-y-2">
-            {[
-              { id: 'exp-0-2', label: '0 – 2 years' },
-              { id: 'exp-2-5', label: '2 – 5 years' },
-              { id: 'exp-5-plus', label: '5+ years' },
-            ].map((exp) => {
-              const isChecked = selectedExperience.includes(exp.id);
-              return (
-                <label
-                  key={exp.id}
-                  className="flex items-center gap-2.5 text-xs text-[#334155] hover:text-[#091426] cursor-pointer select-none"
+        <>
+          {/* Worker Availability Pills */}
+          <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
+              <Calendar className="w-3.5 h-3.5 text-[#0051d5]" />
+              <span>Availability</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1 bg-[#f8f9ff] p-1 rounded-xl border border-[#e2e8f0]">
+              {(
+                [
+                  { label: 'Any', value: 'any' },
+                  { label: 'Today', value: 'today' },
+                  { label: 'This Week', value: 'this_week' },
+                  { label: 'Custom', value: 'custom' },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => onSelectAvailability(item.value)}
+                  className={`py-1.5 text-[11px] font-semibold rounded-lg transition-all text-center cursor-pointer ${
+                    availability === item.value
+                      ? 'bg-[#0051d5] text-white shadow-xs'
+                      : 'text-[#64748b] hover:text-[#091426]'
+                  }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => onToggleExperience(exp.id)}
-                    className="w-4 h-4 rounded border-[#cbd5e1] text-[#0051d5] focus:ring-[#0051d5] cursor-pointer accent-[#0051d5]"
-                  />
-                  <span className={isChecked ? 'font-semibold text-[#091426]' : 'font-normal'}>
-                    {exp.label}
-                  </span>
-                </label>
-              );
-            })}
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          {/* Worker Experience Level */}
+          <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
+              <Award className="w-3.5 h-3.5 text-[#0051d5]" />
+              <span>Experience Level</span>
+            </div>
+            <div className="space-y-2">
+              {[
+                { id: 'exp-0-2', label: '0 – 2 years' },
+                { id: 'exp-2-5', label: '2 – 5 years' },
+                { id: 'exp-5-plus', label: '5+ years' },
+              ].map((exp) => {
+                const isChecked = selectedExperience.includes(exp.id);
+                return (
+                  <label
+                    key={exp.id}
+                    className="flex items-center gap-2.5 text-xs text-[#334155] hover:text-[#091426] cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => onToggleExperience(exp.id)}
+                      className="w-4 h-4 rounded border-[#cbd5e1] text-[#0051d5] focus:ring-[#0051d5] cursor-pointer accent-[#0051d5]"
+                    />
+                    <span className={isChecked ? 'font-semibold text-[#091426]' : 'font-normal'}>
+                      {exp.label}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Minimum Rating */}
+          <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
+              <Star className="w-3.5 h-3.5 text-[#0051d5]" />
+              <span>Minimum Rating</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { label: 'Any', value: 0 },
+                { label: '3+', value: 3.0 },
+                { label: '4+', value: 4.0 },
+                { label: '4.5+', value: 4.5 },
+              ].map((rate) => (
+                <button
+                  key={rate.label}
+                  type="button"
+                  onClick={() => onSelectRating(rate.value)}
+                  className={`py-1.5 px-2 text-xs font-semibold rounded-xl border text-center transition-all cursor-pointer ${
+                    minRating === rate.value
+                      ? 'bg-[#0051d5] text-white border-[#0051d5] shadow-xs'
+                      : 'bg-[#ffffff] text-[#475569] border-[#e2e8f0] hover:bg-[#f8f9ff]'
+                  }`}
+                >
+                  {rate.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
-      {/* 5. Minimum Rating (Customer mode) */}
-      {searchMode === 'workers' && (
-        <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
-            <Star className="w-3.5 h-3.5 text-[#0051d5]" />
-            <span>Minimum Rating</span>
-          </div>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { label: 'Any', value: 0 },
-              { label: '3+', value: 3.0 },
-              { label: '4+', value: 4.0 },
-              { label: '4.5+', value: 4.5 },
-            ].map((rate) => (
-              <button
-                key={rate.label}
-                type="button"
-                onClick={() => onSelectRating(rate.value)}
-                className={`py-1.5 px-2 text-xs font-semibold rounded-xl border text-center transition-all ${
-                  minRating === rate.value
-                    ? 'bg-[#0051d5] text-white border-[#0051d5] shadow-xs'
-                    : 'bg-[#ffffff] text-[#475569] border-[#e2e8f0] hover:bg-[#f8f9ff]'
-                }`}
-              >
-                {rate.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Worker Mode: Job Status & Budget */}
+      {/* ── SECTION 4: WORKER MODE FILTERS (JOB STATUS & BUDGET RANGE) ── */}
       {searchMode === 'jobs' && (
         <>
-          {/* Job Status */}
+          {/* Job Status Filter */}
           <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
               <Briefcase className="w-3.5 h-3.5 text-[#0051d5]" />
@@ -592,7 +676,7 @@ export default function FilterSidebar({
                   key={item.value}
                   type="button"
                   onClick={() => onSelectJobStatus && onSelectJobStatus(item.value)}
-                  className={`py-1.5 text-[11px] font-semibold rounded-lg transition-all text-center ${
+                  className={`py-1.5 text-[11px] font-semibold rounded-lg transition-all text-center cursor-pointer ${
                     jobStatus === item.value
                       ? 'bg-[#0051d5] text-white shadow-xs'
                       : 'text-[#64748b] hover:text-[#091426]'
@@ -604,7 +688,7 @@ export default function FilterSidebar({
             </div>
           </div>
 
-          {/* Budget Range */}
+          {/* Budget Range Filter */}
           <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
               <DollarSign className="w-3.5 h-3.5 text-[#0051d5]" />
@@ -623,7 +707,7 @@ export default function FilterSidebar({
                   key={b.value}
                   type="button"
                   onClick={() => onSelectBudgetRange && onSelectBudgetRange(b.value)}
-                  className={`py-1.5 px-2 text-[11px] font-semibold rounded-xl border text-center transition-all ${
+                  className={`py-1.5 px-2 text-[11px] font-semibold rounded-xl border text-center transition-all cursor-pointer ${
                     budgetRange === b.value
                       ? 'bg-[#0051d5] text-white border-[#0051d5] shadow-xs'
                       : 'bg-[#ffffff] text-[#475569] border-[#e2e8f0] hover:bg-[#f8f9ff]'
@@ -637,7 +721,7 @@ export default function FilterSidebar({
         </>
       )}
 
-      {/* 6. Distance Radius */}
+      {/* ── SECTION 5: GEO-PROXIMITY RADIUS SLIDER (SHARED) ── */}
       <div className="space-y-2.5 pt-4 border-t border-[#f1f5f9]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
