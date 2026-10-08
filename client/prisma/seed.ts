@@ -514,6 +514,9 @@ const sampleJobs = [
 ];
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Refusing to run the dev seed in production. Use seed-roles instead.");
+  }
   console.log("Starting database seed...");
 
   // 1. Seed Roles
