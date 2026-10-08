@@ -1,22 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Users,
   UserPlus,
   CheckCircle2,
-  XCircle,
   MessageSquare,
-  ShieldCheck,
-  Clock,
-  Briefcase,
-  Sparkles,
   AlertCircle,
-  ArrowRight
 } from 'lucide-react';
-import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { getToken } from '@/lib/auth-client';
 import api from '@/lib/api';
 
 interface WorkerConnection {
@@ -50,7 +44,6 @@ interface WorkerConnection {
 
 export default function WorkerNetworkPage() {
   const router = useRouter();
-  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
   const [activeTab, setActiveTab] = useState<'CONNECTIONS' | 'PENDING' | 'CONNECT'>('CONNECTIONS');
   const [connections, setConnections] = useState<WorkerConnection[]>([]);

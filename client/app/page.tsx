@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -11,16 +11,8 @@ import {
   ArrowRight,
   ChevronRight,
   Sparkles,
-  Zap,
-  Snowflake,
-  Hammer,
-  Package,
-  Brush,
-  Users,
-  Briefcase,
   CheckCircle2,
   ArrowUpRight,
-  Droplet
 } from 'lucide-react';
 import {
   POPULAR_SERVICES,
