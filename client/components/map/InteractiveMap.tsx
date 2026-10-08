@@ -302,6 +302,23 @@ export default function InteractiveMap({
 
   useEffect(() => () => geoAbortRef.current?.abort(), []);
 
+  useEffect(() => {
+    console.log(map)
+    if (map) {
+
+      const corrd1 = {
+        lat: 30.748636,
+        lng: 76.643286
+      }
+      const corrd2 = {
+        lat: 30.699234,
+        lng: 76.693776
+      }
+      const distance = map.distance(corrd1, corrd2)
+      console.log("the dist between the two points is ", (distance / 1000).toFixed(2))
+    }
+  }, [map])
+
   /* ---------------------------- map handlers ---------------------------- */
 
   const startLocate = useCallback(() => {
