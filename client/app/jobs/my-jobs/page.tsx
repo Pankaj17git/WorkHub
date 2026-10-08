@@ -1,25 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Briefcase,
   Clock,
-  Calendar,
   MapPin,
-  CheckCircle2,
-  AlertCircle,
   Plus,
   ArrowRight,
-  Sparkles,
-  DollarSign,
   UserCheck,
   Navigation,
-  MessageSquare,
-  ShieldCheck
 } from 'lucide-react';
-import { getToken, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { getToken } from '@/lib/auth-client';
 
 interface MyJob {
   id: string;
@@ -64,7 +57,6 @@ interface DirectHireReq {
 
 export default function MyJobsAndBookingsPage() {
   const router = useRouter();
-  const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
 
   const [activeTab, setActiveTab] = useState<'POSTED_JOBS' | 'DIRECT_HIRES'>('POSTED_JOBS');
   const [jobs, setJobs] = useState<MyJob[]>([]);

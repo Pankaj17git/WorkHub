@@ -6,6 +6,7 @@ import { authMiddleware } from "@/middleware/auth.middleware";
 import { uploadService } from "@/services/upload.service";
 import { extractKeyFromUrl, generateKey } from "@/utils/file.upload";
 import { validateFile } from "@/middleware/validateUpload.middleware";
+import { skill } from "@/types";
 
 
 export const userController = {
@@ -76,15 +77,22 @@ export const userController = {
         include: {
           roleRef: true,
           customer: { include: { address: true } },
-          worker: { include: { address: true, skills: {
+          worker: {
             include: {
-              skill: {
-                select: {
-                  name: true,
+              address: true,
+              skills: {
+                include: {
+                  skill: {
+                    select: {
+                      id: true,
+                      name: true,
+                      key: true,
+                    },
+                  },
                 },
               },
             },
-          } } },
+          },
         },
       });
 
@@ -127,10 +135,17 @@ export const userController = {
               : null,
             worker: user.worker
               ? {
+                  id: user.worker.id.toString(),
                   headline: user.worker.headline,
                   bio: user.worker.bio,
                   portfolio: user.worker.portfolio,
-                  skills: user.worker.skills.map((s) => ({ id: s.skillId.toString(), name: s.skill.name })),
+                  hourlyRate: user.worker.hourlyRate ? Number(user.worker.hourlyRate) : null,
+                  isVerified: user.worker.isVerified,
+                  skills: user.worker.skills.map((s) => ({
+                    id: s.skillId.toString(),
+                    name: s.skill.name,
+                    key: s.skill.key,
+                  })),
                 }
               : null,
           },
@@ -181,9 +196,13 @@ export const userController = {
       let companyName: string | undefined;
       let headline: string | undefined;
       let bio: string | undefined;
+      let portfolio: string | undefined;
+      let hourlyRate: number | null | undefined;
+      let skills: skill[] | undefined;
       let newProfileImageUrl: string | undefined;
 
       if (contentType.includes("multipart/form-data")) {
+        console.log("inside multipart/form-data")
         const formData = await req.formData();
         const file = formData.get("profileImage") as File | null;
         const nameVal = formData.get("name") as string | null;
@@ -191,12 +210,26 @@ export const userController = {
         const companyVal = formData.get("companyName") as string | null;
         const headlineVal = formData.get("headline") as string | null;
         const bioVal = formData.get("bio") as string | null;
+        const portfolioVal = formData.get("portfolio") as string | null;
+        const hourlyRateVal = formData.get("hourlyRate") as string | null;
+        const skillsVal = formData.get("skills") as string | null;
 
         if (nameVal !== null) name = nameVal;
         if (phoneVal !== null) phone = phoneVal;
         if (companyVal !== null) companyName = companyVal;
         if (headlineVal !== null) headline = headlineVal;
         if (bioVal !== null) bio = bioVal;
+        if (portfolioVal !== null) portfolio = portfolioVal;
+        if (hourlyRateVal !== null) {
+          hourlyRate = hourlyRateVal === "" ? null : Number(hourlyRateVal);
+        }
+        if (skillsVal !== null) {
+          try {
+            skills = JSON.parse(skillsVal);
+          } catch {
+            skills = [];
+          }
+        }
 
         if (file && typeof file === "object" && file.size > 0) {
           validateFile(file);
@@ -220,6 +253,13 @@ export const userController = {
         companyName = body.companyName;
         headline = body.headline;
         bio = body.bio;
+        portfolio = body.portfolio;
+        if (body.hourlyRate !== undefined) {
+          hourlyRate = body.hourlyRate === "" || body.hourlyRate === null ? null : Number(body.hourlyRate);
+        }
+        if (body.skills !== undefined) {
+          skills = Array.isArray(body.skills) ? body.skills : [];
+        }
         if (body.profileImage) {
           newProfileImageUrl = body.profileImage;
         }
@@ -230,11 +270,12 @@ export const userController = {
       if (phone !== undefined) userUpdateData.phone = phone;
       if (newProfileImageUrl !== undefined) userUpdateData.profileImage = newProfileImageUrl;
 
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: userUpdateData,
-        include: { roleRef: true },
-      });
+      if (Object.keys(userUpdateData).length > 0) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: userUpdateData,
+        });
+      }
 
       // Update customer specific fields if provided
       if (companyName !== undefined && existingUser.customer) {
@@ -245,14 +286,90 @@ export const userController = {
       }
 
       // Update worker specific fields if provided
-      if ((headline !== undefined || bio !== undefined) && existingUser.worker) {
-        await prisma.worker.update({
-          where: { id: existingUser.worker.id },
-          data: {
-            ...(headline !== undefined && { headline }),
-            ...(bio !== undefined && { bio }),
-          },
-        });
+      if (existingUser.roleRef?.type === "WORKER" || existingUser.worker) {
+        let workerId = existingUser.worker?.id;
+        if (!workerId) {
+          const newWorker = await prisma.worker.create({
+            data: { userId },
+          });
+          workerId = newWorker.id;
+        }
+
+        const workerUpdateData: {
+          headline?: string;
+          bio?: string;
+          portfolio?: string | null;
+          hourlyRate?: number | null;
+        } = {};
+
+        if (headline !== undefined) workerUpdateData.headline = headline;
+        if (bio !== undefined) workerUpdateData.bio = bio;
+        if (portfolio !== undefined) workerUpdateData.portfolio = portfolio || null;
+        if (hourlyRate !== undefined) workerUpdateData.hourlyRate = hourlyRate;
+
+        if (Object.keys(workerUpdateData).length > 0) {
+          await prisma.worker.update({
+            where: { id: workerId },
+            data: workerUpdateData,
+          });
+        }
+
+        // Sync skills if provided
+        if (skills !== undefined && Array.isArray(skills)) {
+          const skillIdentifiers: string[] = skills
+            .map((s) => (typeof s === "string" ? s : (s.name || s.id || "")))
+            .filter(Boolean);
+
+          const skillIds: bigint[] = [];
+          for (const identifier of skillIdentifiers) {
+            let foundSkill = null;
+            if (/^\d+$/.test(identifier)) {
+              foundSkill = await prisma.skill.findUnique({
+                where: { id: BigInt(identifier) },
+              });
+            }
+            if (!foundSkill) {
+              foundSkill = await prisma.skill.findFirst({
+                where: {
+                  OR: [
+                    { name: { equals: identifier } },
+                    { key: { equals: identifier.toLowerCase().replace(/[^a-z0-9]/g, "_") } },
+                  ],
+                },
+              });
+            }
+            if (!foundSkill) {
+              const baseKey = identifier.toLowerCase().replace(/[^a-z0-9]/g, "_").slice(0, 80);
+              const uniqueKey = `${baseKey}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+              foundSkill = await prisma.skill.create({
+                data: {
+                  name: identifier,
+                  key: uniqueKey,
+                  isCustom: true,
+                  createdBy: userId,
+                },
+              });
+            }
+            if (foundSkill && !skillIds.some((id) => id === foundSkill.id)) {
+              skillIds.push(foundSkill.id);
+            }
+          }
+
+          // Delete existing worker skills
+          await prisma.workerSkill.deleteMany({
+            where: { workerId },
+          });
+
+          // Insert updated worker skills
+          if (skillIds.length > 0) {
+            await prisma.workerSkill.createMany({
+              data: skillIds.map((sId) => ({
+                workerId,
+                skillId: sId,
+              })),
+            });
+          }
+        }
       }
 
       // Delete old profile image on Cloudinary if replaced
@@ -263,15 +380,83 @@ export const userController = {
         });
       }
 
+      // Fetch refreshed user record
+      const refreshedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          roleRef: true,
+          customer: { include: { address: true } },
+          worker: {
+            include: {
+              address: true,
+              skills: {
+                include: {
+                  skill: {
+                    select: {
+                      id: true,
+                      name: true,
+                      key: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!refreshedUser) {
+        return NextResponse.json({ error: "User not found" }, { status: status.NOT_FOUND });
+      }
+
+      const rawAddress = refreshedUser.customer?.address || refreshedUser.worker?.address || null;
+      const address = rawAddress
+        ? {
+            id: rawAddress.id.toString(),
+            address: rawAddress.address,
+            city: rawAddress.city,
+            state: rawAddress.state,
+            country: rawAddress.country,
+            latitude: rawAddress.latitude ? Number(rawAddress.latitude) : null,
+            longitude: rawAddress.longitude ? Number(rawAddress.longitude) : null,
+          }
+        : null;
+
       return NextResponse.json(
         {
           user: {
-            id: updatedUser.id.toString(),
-            email: updatedUser.email,
-            name: updatedUser.name,
-            phone: updatedUser.phone,
-            profileImage: updatedUser.profileImage,
-            role: updatedUser.roleRef?.type || "CUSTOMER",
+            id: refreshedUser.id.toString(),
+            email: refreshedUser.email,
+            name: refreshedUser.name,
+            phone: refreshedUser.phone,
+            profileImage: refreshedUser.profileImage,
+            role: refreshedUser.roleRef?.type || "CUSTOMER",
+            status: refreshedUser.status,
+            emailVerifiedAt: refreshedUser.emailVerifiedAt,
+            createdAt: refreshedUser.createdAt,
+            address,
+            customer: refreshedUser.customer
+              ? {
+                  companyName: refreshedUser.customer.companyName,
+                  phone: refreshedUser.customer.phone,
+                  avatar: refreshedUser.customer.avatar,
+                }
+              : null,
+            worker: refreshedUser.worker
+              ? {
+                  id: refreshedUser.worker.id.toString(),
+                  headline: refreshedUser.worker.headline,
+                  bio: refreshedUser.worker.bio,
+                  portfolio: refreshedUser.worker.portfolio,
+                  hourlyRate: refreshedUser.worker.hourlyRate ? Number(refreshedUser.worker.hourlyRate) : null,
+                  isVerified: refreshedUser.worker.isVerified,
+                  skills: refreshedUser.worker.skills.map((s) => ({
+                    id: s.skillId.toString(),
+                    name: s.skill.name,
+                    key: s.skill.key,
+                  })),
+                }
+              : null,
           },
         },
         { status: status.OK }

@@ -1,14 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
   Star, 
-  ShieldCheck, 
-  ThumbsUp, 
-  Camera, 
   CheckCircle2, 
   Heart,
   Sparkles
@@ -18,7 +15,6 @@ import { getToken } from '@/lib/auth-client';
 
 export default function BookingReviewPage() {
   const params = useParams();
-  const router = useRouter();
   const proId = (params.id as string) || 'pro-1';
   const pro = MOCK_PROS.find((p) => p.id === proId) || MOCK_PROS[0];
 
