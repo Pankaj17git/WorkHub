@@ -51,10 +51,13 @@ jobs:
         run: npm run build
 
       # ── Install Railway CLI & deploy ────────────────────────
+      # Run from repo root — Railway's service settings already set "client" as the root directory
       - name: Install Railway CLI
+        working-directory: .
         run: npm i -g @railway/cli
 
       - name: Deploy to Railway
+        working-directory: .
         run: railway up --service WorkHub --ci
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
