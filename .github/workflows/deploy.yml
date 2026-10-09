@@ -1,0 +1,60 @@
+# ──────────────────────────────────────────────────────────────
+# Deploy to Railway – runs on every push to main
+# ──────────────────────────────────────────────────────────────
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual "Run workflow" button
+
+# Cancel any in-progress deploy when a newer commit lands on main
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    # App code lives in the client/ subdirectory
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Node.js + npm cache ─────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      # ── Install dependencies (clean, lockfile-exact) ────────
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Lint (only runs because the script exists) ──────────
+      - name: Lint
+        run: npm run lint
+
+      # ── Build the Next.js app ───────────────────────────────
+      - name: Build
+        run: npm run build
+
+      # ── Install Railway CLI & deploy ────────────────────────
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway up --service <SERVICE_NAME> --ci
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
