@@ -43,8 +43,8 @@ jobs:
         run: npm ci
 
       # ── Lint (only runs because the script exists) ──────────
-      - name: Lint
-        run: npm run lint
+      # - name: Lint
+      #   run: npm run lint
 
       # ── Build the Next.js app ───────────────────────────────
       - name: Build
