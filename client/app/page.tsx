@@ -64,7 +64,7 @@ export default function HomePage() {
 
               {/* Main Headline */}
               <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-[#0f172a] tracking-tight leading-[1.12]">
-                Find Skilled Workers <br />
+                Find Skilled Workforce <br />
                 for{' '}
                 <span className="text-[#0066f5]">
                   Any Job, Anytime
