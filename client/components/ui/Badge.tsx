@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Zap, Star } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 interface BadgeProps {
   variant?: 'verified' | 'urgent' | 'accent' | 'neutral' | 'online';

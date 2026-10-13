@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ArrowRight, Clock, MapPin } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Clock } from 'lucide-react';
 import { Professional, ServiceItem } from '@/types';
 import PriceTag from '../ui/PriceTag';
 

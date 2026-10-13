@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useSyncExternalStore, useLayoutEffect } from 'react';
+import React, { useState, useSyncExternalStore, useLayoutEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -219,14 +219,14 @@ export default function JobDetailPage() {
         setInviteWorkerId('');
         setInviteNotice(null);
       }, 1500);
-    } catch (err) {
+    } catch {
       setInviteNotice('Error sending team invitation.');
     } finally {
       setInviting(false);
     }
   };
 
-  const fetchJob = async () => {
+  const fetchJob = useCallback(async () => {
     try {
       const res = await fetch(`/api/jobs/${jobId}`);
       if (!res.ok) {
@@ -255,11 +255,11 @@ export default function JobDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId])
 
   useLayoutEffect(() => {
     fetchJob();
-  }, [jobId])
+  }, [fetchJob])
 
   if (loading) {
     return (
