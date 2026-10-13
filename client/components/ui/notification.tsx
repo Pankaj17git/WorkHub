@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useTransition } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -33,23 +33,9 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [pending, startTransition] = useTransition()
+  // const [pending, startTransition] = useTransition()
 
-  const fetchNotifications = useCallback(async () => {
-    if (!token) return;
-    try {
-      const url = `/api/notifications${unreadOnly ? '?unread=true' : ''}`;
-      const res = await api.get(url, {
-        metadata: { feature: 'notifications' },
-      });
-      const data = res.data;
-      startTransition(() => setNotifications(data.notifications || data.data?.notifications || []));
-    } catch (err) {
-      console.error('Failed to load notifications:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [token, unreadOnly]);
+
 
   useEffect(() => {
     if (authLoading) return;
@@ -59,8 +45,26 @@ export default function NotificationsPage() {
       return;
     }
 
+      const fetchNotifications = async () => {
+
+    if (!token) return;
+    setLoading(true);
+    
+    try {
+      const url = `/api/notifications${unreadOnly ? '?unread=true' : ''}`;
+      const res = await api.get(url, {
+        metadata: { feature: 'notifications' },
+      });
+      const data = res.data;
+      setNotifications(data.notifications || data.data?.notifications);
+    } catch (err) {
+      console.error('Failed to load notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
     fetchNotifications();
-  }, [authLoading, isAuthenticated, fetchNotifications, router]);
+  }, [authLoading, isAuthenticated, unreadOnly, token, router]);
 
   const handleMarkAsRead = async (id: string) => {
     try {

@@ -30,7 +30,6 @@ export default function BookingReviewPage() {
   );
   const [tipAmount, setTipAmount] = useState<number>(100);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const availableTags = [
     'Punctual & On Time',
@@ -55,7 +54,6 @@ export default function BookingReviewPage() {
     const token = getToken();
     const numericId = proId.replace(/\D/g, '') || '1';
 
-    setSubmitting(true);
     if (token) {
       try {
         await fetch('/api/reviews', {
@@ -74,7 +72,6 @@ export default function BookingReviewPage() {
         console.error('Review submit failed:', err);
       }
     }
-    setSubmitting(false);
     setIsSubmitted(true);
   };
 

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -28,7 +28,6 @@ export default function WorkerJobDetailsExecutionPage() {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
-  const [paymentCollected, setPaymentCollected] = useState(false);
 
   // Step 1: Start Travel
   const handleStartTravel = async () => {
@@ -124,7 +123,6 @@ export default function WorkerJobDetailsExecutionPage() {
       }
     }
     setCurrentStep('COMPLETED');
-    setPaymentCollected(true);
     setLoadingAction(false);
   };
 

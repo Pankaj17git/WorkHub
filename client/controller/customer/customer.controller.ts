@@ -1,4 +1,3 @@
-import { Prisma } from "@/generated/prisma/client";
 import { authMiddleware } from "@/middleware/auth.middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { status } from "@/constants/statusCodes";

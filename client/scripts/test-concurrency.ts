@@ -44,16 +44,6 @@ async function runConcurrencyTests() {
     include: { worker: true },
   });
 
-  const worker3User = await prisma.user.create({
-    data: {
-      email: `test-w3-${timestamp}@test.com`,
-      password: "hash",
-      name: "Test Worker 3",
-      worker: { create: { headline: "Carpenter", isVerified: true } },
-    },
-    include: { worker: true },
-  });
-
   const customerActor: AuthActor = {
     userId: customerUser.id,
     email: customerUser.email,
@@ -76,14 +66,6 @@ async function runConcurrencyTests() {
     role: "WORKER",
     customer: null,
     worker: { id: worker2User.worker!.id, isVerified: true, addressId: null },
-  };
-
-  const w3Actor: AuthActor = {
-    userId: worker3User.id,
-    email: worker3User.email,
-    role: "WORKER",
-    customer: null,
-    worker: { id: worker3User.worker!.id, isVerified: true, addressId: null },
   };
 
   // Setup trusted connection between Worker 1 and Worker 2
@@ -123,7 +105,7 @@ async function runConcurrencyTests() {
     await JobService.applyToJob(w1Actor, job1.id, "Quote 1 again");
     console.error("❌ Test 1 Duplicate Protection Failed: Worker 1 was allowed to apply twice!");
     process.exit(1);
-  } catch (err: unknown) {
+  } catch {
     console.log("✔ Test 1 Duplicate Protection Passed: Duplicate application was properly rejected.");
   }
 
@@ -238,7 +220,7 @@ async function runConcurrencyTests() {
     await AssignmentStateService.verifyStartOtp(w2Actor, assignment.id, "000000");
     console.error("❌ Test 5 Failed: Wrong OTP was accepted!");
     process.exit(1);
-  } catch (err: unknown) {
+  } catch {
     console.log("✔ Test 5 Passed: Invalid OTP was correctly rejected.");
   }
 

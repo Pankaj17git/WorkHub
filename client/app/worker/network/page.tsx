@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -55,7 +55,7 @@ export default function WorkerNetworkPage() {
   const [sendingRequest, setSendingRequest] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const loadNetworkData = async (showLoading = false) => {
+  const loadNetworkData = useCallback(async (showLoading = false) => {
     const token = getToken();
     if (!token) {
       router.push('/login?role=WORKER&redirect=/worker/network');
@@ -80,7 +80,7 @@ export default function WorkerNetworkPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +93,7 @@ export default function WorkerNetworkPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadNetworkData]);
 
   const handleAcceptConnection = async (id: string) => {
     const token = getToken();
@@ -151,7 +151,7 @@ export default function WorkerNetworkPage() {
       setNotice({ type: 'success', message: 'Connection request sent successfully!' });
       setTargetWorkerId('');
       loadNetworkData();
-    } catch (err) {
+    } catch {
       setNotice({ type: 'error', message: 'Error sending request.' });
     } finally {
       setSendingRequest(false);

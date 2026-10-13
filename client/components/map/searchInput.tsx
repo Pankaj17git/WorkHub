@@ -52,26 +52,26 @@ export default function SearchInput ({
         if (requestId === requestIdRef.current) setIsSearching(false);
       }
     },
-    [searchProvider, maxResults],
+    [searchProvider, maxResults, onTypingResult],
   );
 
   // Debounced autocomplete
   useEffect(() => {
     const query = searchQuery.trim();
 
-    if (query === programmaticQueryRef.current) return; // set by a selection
-    if (query.length < minChars) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      setIsSearching(false);
-      return;
-    }
+    // Skip if this change came from selecting a result
+    if (query === programmaticQueryRef.current) return;
 
-    const timer = setTimeout(() => void runSearch(query), debounceMs);
+    // Skip if still too short (reset already handled in onChange)
+    if (query.length < minChars) return;
+
+    const timer = setTimeout(() => {
+      void runSearch(query);
+    }, debounceMs);
 
     return () => {
       clearTimeout(timer);
-      requestIdRef.current++; // invalidate any in-flight request
+      requestIdRef.current++; // cancel in-flight request
     };
   }, [searchQuery, minChars, debounceMs, runSearch]);
 
@@ -130,7 +130,15 @@ export default function SearchInput ({
           id="map-geosearch-input"
           type="text"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            // Reset immediately when query is too short
+            if (e.target.value.trim().length < minChars) {
+              setSearchResults([]);
+              setShowDropdown(false);
+              setIsSearching(false);
+            }
+          }}
           onFocus={() => {
             if (searchResults.length > 0) setShowDropdown(true);
           }}
