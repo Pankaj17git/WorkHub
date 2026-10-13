@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext, useRef, useEffect } from 'react';
+import React, { useContext, useRef } from 'react';
 import Link from 'next/link';
 import {
   MessageSquare,

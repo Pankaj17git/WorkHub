@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import {
   MapPin,
@@ -72,22 +72,6 @@ export default function AddressSection({
   const [addressHighlight, setAddressHighlight] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
   const [addressMsg, setAddressMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  // Sync state if initialAddress changes externally
-  useEffect(() => {
-    if (initialAddress) {
-      setAddressLine(initialAddress.address || "");
-      setCity(initialAddress.city || "");
-      setStateName(initialAddress.state || "");
-      setCountry(initialAddress.country || "India");
-      if (initialAddress.latitude !== null && initialAddress.latitude !== undefined) {
-        setLatitude(Number(initialAddress.latitude));
-      }
-      if (initialAddress.longitude !== null && initialAddress.longitude !== undefined) {
-        setLongitude(Number(initialAddress.longitude));
-      }
-    }
-  }, [initialAddress]);
 
   // Map coordinate/address selection callback
   const handleMapLocationSelect = (loc: InteractiveMapLocation) => {

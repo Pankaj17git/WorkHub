@@ -1,22 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { 
   Wallet, 
   ArrowUpRight, 
   Download, 
   Building, 
   CheckCircle2, 
-  Clock, 
   Heart, 
   ShieldCheck,
   TrendingUp,
-  DollarSign
 } from 'lucide-react';
 import { MOCK_WORKER_METRICS, MOCK_EARNINGS_HISTORY } from '@/data/mockWorkerData';
 import MetricCard from '@/components/worker/MetricCard';
-import PriceTag from '@/components/ui/PriceTag';
 
 export default function WorkerEarningsAnalyticsPage() {
   const [isWithdrawing, setIsWithdrawing] = useState(false);

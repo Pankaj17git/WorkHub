@@ -6,11 +6,8 @@ import {
   MapPin, 
   Clock, 
   Check, 
-  X, 
   ArrowRight, 
-  ShieldCheck, 
   AlertCircle, 
-  Phone
 } from 'lucide-react';
 import { WorkerJobRequest } from '@/types';
 import PriceTag from '@/components/ui/PriceTag';

@@ -264,7 +264,6 @@ export default function MyJobsAndBookingsPage() {
               {directHires.map((req) => {
                 const isAccepted = req.status === 'ACCEPTED';
                 const isDeclined = req.status === 'DECLINED';
-                const isPending = req.status === 'PENDING';
 
                 return (
                   <div

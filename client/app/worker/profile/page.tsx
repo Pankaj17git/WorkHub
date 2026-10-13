@@ -23,7 +23,6 @@ import {
   Tag,
   Wrench,
   DollarSign,
-  Sparkles,
 } from "lucide-react";
 import {
   getToken,

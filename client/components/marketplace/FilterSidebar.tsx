@@ -99,20 +99,6 @@ export interface FilterSidebarProps {
 
 /* ─── Default Constants & Preset Lists ───────────────────────────────────── */
 
-/** Popular service locations used for quick-selection suggestions */
-const POPULAR_LOCATIONS: string[] = [
-  'Chandigarh',
-  'Sector 17, Chandigarh',
-  'Sector 22, Chandigarh',
-  'Sector 35, Chandigarh',
-  'Mohali',
-  'Panchkula',
-  'Zirakpur',
-  'Delhi NCR',
-  'Mumbai',
-  'Bengaluru',
-];
-
 /** Number of categories visible before expanding "Show more" */
 const INITIAL_CATEGORY_COUNT = 7;
 
@@ -234,13 +220,13 @@ export default function FilterSidebar({
   );
 
   /** Location selection handler */
-  const handleSelectLocation = (loc: GeoLocation) => {
+  const handleSelectLocation = useCallback((loc: GeoLocation) => {
     if (!loc.label) {
       onSelectLocation(`${loc.lat},${loc.lng}`);
     } else {
       onSelectLocation(loc.label);
     }
-  };
+  },[onSelectLocation]);
 
   /** Reverse geocoding helper to convert coordinates to a readable address string */
   const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
@@ -294,7 +280,7 @@ export default function FilterSidebar({
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
-  }, []);
+  }, [handleSelectLocation]);
 
   /* ── 4. Fetch dynamic skills/categories from backend ── */
   useEffect(() => {

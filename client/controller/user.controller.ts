@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { z } from "zod";
 import { status } from "@/constants/statusCodes";
 import { authMiddleware } from "@/middleware/auth.middleware";
 import { uploadService } from "@/services/upload.service";
