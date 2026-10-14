@@ -16,7 +16,7 @@ export const AssignmentStateService = {
    * Worker starts travel
    */
   async startTravel(actor: AuthActor, assignmentId: bigint) {
-    return this.transition(actor, assignmentId, "START_TRAVEL", "CONFIRMED", "ON_THE_WAY", {
+    return this.transition(actor, assignmentId, "START_TRAVEL", ["CONFIRMED", "ASSIGNED"], "ON_THE_WAY", {
       onTheWayAt: new Date(),
     });
   },
@@ -67,6 +67,7 @@ export const AssignmentStateService = {
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
     });
+    console.log("assignment",assignment)
 
     if (!assignment) throw new Error("Assignment not found");
     if (assignment.workerId !== actor.worker.id) throw new Error("Unauthorized");
@@ -200,7 +201,7 @@ export const AssignmentStateService = {
     actor: AuthActor,
     assignmentId: bigint,
     action: AssignmentAction,
-    expectedStatus: string,
+    expectedStatus: string | string[],
     targetStatus: "CONFIRMED" | "ON_THE_WAY" | "ARRIVED" | "IN_PROGRESS" | "COMPLETED",
     additionalData: Record<string, unknown>
   ) {
@@ -214,18 +215,26 @@ export const AssignmentStateService = {
       throw new Error(`Unauthorized to perform action ${action} on assignment`);
     }
 
-    if (assignment.status !== expectedStatus) {
+    const validStatuses = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
+    if (!validStatuses.includes(assignment.status)) {
       throw new Error(
-        `Invalid state transition: Cannot perform ${action} on assignment with status ${assignment.status} (expected: ${expectedStatus})`
+        `Invalid state transition: Cannot perform ${action} on assignment with status ${assignment.status} (expected: ${validStatuses.join(" or ")})`
       );
+    }
+
+    const dataToUpdate: Record<string, unknown> = {
+      status: targetStatus,
+      ...additionalData,
+    };
+
+    // If starting travel directly from ASSIGNED, automatically set confirmedAt as well
+    if (action === "START_TRAVEL" && !assignment.confirmedAt) {
+      dataToUpdate.confirmedAt = new Date();
     }
 
     return prisma.assignment.update({
       where: { id: assignmentId },
-      data: {
-        status: targetStatus,
-        ...additionalData,
-      },
+      data: dataToUpdate,
     });
   },
 };

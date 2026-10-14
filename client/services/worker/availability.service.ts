@@ -46,7 +46,8 @@ export const AvailabilityService = {
     const buffer = options?.bufferMinutes ?? 30;
     const reqStartMins = timeToMinutes(requestedStartTime);
     const reqEndMins = timeToMinutes(requestedEndTime);
-
+    console.log("the options", options)
+    
     if (reqStartMins >= reqEndMins) {
       return {
         isAvailable: false,
@@ -62,6 +63,9 @@ export const AvailabilityService = {
       include: {
         user: true,
         services: true,
+        skills: {
+          include: { skill: true },
+        },
         availabilities: {
           where: { dayOfWeek },
         },
@@ -71,6 +75,7 @@ export const AvailabilityService = {
       },
     });
 
+
     if (!worker || worker.deletedAt !== null || worker.user.deletedAt !== null || worker.user.status !== "ACTIVE") {
       return {
         isAvailable: false,
@@ -78,17 +83,38 @@ export const AvailabilityService = {
       };
     }
 
-    // Check service offering if specified
+    // Check service offering — fall back to skill match if service not found
     if (options?.serviceName) {
+      console.log("the worker services", options)
       const hasService = worker.services.some(
         (s: { serviceName: string; isActive: boolean }) =>
           s.serviceName.toLowerCase() === options.serviceName?.toLowerCase() && s.isActive
       );
+
       if (!hasService) {
-        return {
-          isAvailable: false,
-          reason: `Worker does not offer active service: ${options.serviceName}`,
-        };
+        // Collect required skill names: explicit list from options, or fall back to serviceName
+        const requiredSkills = options.requiredSkills?.length
+          ? options.requiredSkills.map((s) => s.toLowerCase())
+          : [options.serviceName.toLowerCase()];
+
+        const workerSkillNames = worker.skills.map(
+          (ws: { skill: { name: string; key: string } }) => ws.skill.name.toLowerCase()
+        );
+        const workerSkillKeys = worker.skills.map(
+          (ws: { skill: { name: string; key: string } }) => ws.skill.key.toLowerCase()
+        );
+
+        const hasMatchingSkill = requiredSkills.some(
+          (req) => workerSkillNames.includes(req) || workerSkillKeys.includes(req)
+        );
+        console.log("the worker hasmatching skills",hasMatchingSkill, workerSkillNames,options )
+
+        if (!hasMatchingSkill) {
+          return {
+            isAvailable: false,
+            reason: `Worker does not offer the service "${options.serviceName}" and has no matching skill`,
+          };
+        }
       }
     }
 

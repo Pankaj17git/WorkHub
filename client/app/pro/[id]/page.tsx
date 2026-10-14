@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -13,7 +13,7 @@ import {
   Heart,
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';
-import { ServiceItem } from '@/types';
+import { ServiceItem, Professional } from '@/types';
 import Badge from '@/components/ui/Badge';
 import PriceTag from '@/components/ui/PriceTag';
 import ReviewCard from '@/components/marketplace/ReviewCard';
@@ -24,13 +24,96 @@ export default function ProDetailPage() {
   const router = useRouter();
   const proId = (params.id as string) || 'pro-1';
   
-  // Find pro or fallback to pro-1
-  const pro = MOCK_PROS.find((p) => p.id === proId) || MOCK_PROS[0];
+  const fallbackPro = MOCK_PROS.find((p) => p.id === proId) || MOCK_PROS[0];
+  const [pro, setPro] = useState<Professional>(fallbackPro);
+  const [loading, setLoading] = useState<boolean>(!proId.startsWith('pro-'));
 
   // Selected services state for interactive configuration
   const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([
-    pro.services[0], // default select first service
+    fallbackPro.services[0],
   ]);
+
+  useEffect(() => {
+    const fetchWorker = async () => {
+      try {
+        const res = await fetch(`/api/workers/${proId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const w = data.worker || data.data?.worker;
+          if (w) {
+            const mappedPro: Professional = {
+              id: w.id,
+              name: w.name,
+              title: w.headline || 'Verified Professional',
+              avatar: w.profileImage,
+              coverImage:
+                'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&auto=format&fit=crop&q=80',
+              category: w.skills?.[0] || 'Specialist',
+              location: w.address
+                ? `${w.address.city || ''}${w.address.state ? ', ' + w.address.state : ''}`
+                : 'Location on request',
+              distanceKm: 0,
+              rating: w.rating || 5.0,
+              reviewCount: w.reviewCount || 0,
+              completedJobs: w.reviewCount ? w.reviewCount * 3 : 12,
+              experienceYears: 5,
+              hourlyRate: w.hourlyRate || 299,
+              verified: w.isVerified,
+              online: true,
+              responseTimeMinutes: 15,
+              about: w.bio || 'Verified service professional on WorkHub.',
+              skills: w.skills || [],
+              services:
+                w.services && w.services.length > 0
+                  ? w.services.map((s: { id: string; name: string; price: number }) => ({
+                      id: s.id,
+                      name: s.name,
+                      description: `Professional service provided by ${w.name}`,
+                      price: s.price,
+                      durationMinutes: 60,
+                    }))
+                  : [
+                      {
+                        id: 'srv-1',
+                        name: `${w.skills?.[0] || 'Specialist'} Consultation & Service`,
+                        description: 'Standard specialist service booking',
+                        price: w.hourlyRate || 299,
+                        durationMinutes: 60,
+                        popular: true,
+                      },
+                    ],
+              reviews: (w.reviews || []).map((r: { id: string; rating: number; comment: string; createdAt: string; customerName: string; customerAvatar: string | null }) => ({
+                id: r.id,
+                author: r.customerName,
+                avatar:
+                  r.customerAvatar ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+                rating: r.rating,
+                date: new Date(r.createdAt).toLocaleDateString('en-IN', {
+                  month: 'short',
+                  year: 'numeric',
+                }),
+                comment: r.comment,
+                serviceUsed: w.skills?.[0] || 'Service',
+                verified: true,
+              })),
+              badges: [w.isVerified ? 'Verified Specialist' : 'Direct Hire', 'Top Rated'],
+            };
+            setPro(mappedPro);
+            if (mappedPro.services.length) {
+              setSelectedServices([mappedPro.services[0]]);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch worker details:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWorker();
+  }, [proId]);
 
   const toggleService = (srv: ServiceItem) => {
     if (selectedServices.some((s) => s.id === srv.id)) {

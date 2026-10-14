@@ -366,15 +366,12 @@ export const authController = {
         }
       }
 
-      // Plain OTP removed from JSON response payload
-      // Stripped emailNotice from response payload
       return NextResponse.json(
         {
           message: "OTP sent successfully",
           otpId: otpRecord.id.toString(),
           expiresAt: otpRecord.expiresAt,
           emailSent: emailResult.sent,
-          plainOtp: plainOtp
         },
         { status: status.OK }
       );

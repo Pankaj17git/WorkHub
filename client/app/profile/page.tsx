@@ -71,6 +71,7 @@ export default function ProfilePage() {
   // Fetch full user profile
   useEffect(() => {
     const fetchProfile = async () => {
+      console.log("profile page hit",session)
       const token = getToken();
       if (!token) {
         setLoading(false);

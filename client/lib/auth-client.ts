@@ -115,7 +115,6 @@ export function resolveLoginRedirect(
   role: string | null | undefined,
   redirect?: string | null
 ): string {
-  debugger;
   if (redirect && redirect.startsWith("/") && !redirect.startsWith("/api")) {
     const wantsWorkerArea = redirect.startsWith("/worker");
     if (role === "WORKER" && wantsWorkerArea) return redirect;
