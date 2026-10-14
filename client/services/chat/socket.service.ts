@@ -56,6 +56,9 @@ export const initSocketServer = (io: Server) => {
         const uid = decoded.userId || decoded.sub;
         if (uid) {
           (socket as CustomSocket).userId = uid.toString();
+        } else {
+          socket.emit("auth:error", { message: "Invalid authentication token" });
+          return;
         }
       }
       next();
@@ -70,9 +73,6 @@ export const initSocketServer = (io: Server) => {
     const initialUserId = resolveUserId(socket);
     if (initialUserId) {
       socket.join(`user:${initialUserId}`);
-      console.log(`[Socket] User connected: ${initialUserId}`);
-    } else {
-      console.log(`[Socket] Client connected: ${socket.id}`);
     }
 
     // Manual client authentication
@@ -83,6 +83,7 @@ export const initSocketServer = (io: Server) => {
         socket.emit("auth:success", { userId: uid });
       } else {
         socket.emit("auth:error", { message: "Invalid authentication token" });
+        return;
       }
     });
 
@@ -107,6 +108,9 @@ export const initSocketServer = (io: Server) => {
             socket.emit("conversation:error", { message: "Not a member of this conversation" });
             return;
           }
+        } else {
+          socket.emit("auth:error", { message: "Invalid authentication token" });
+          return;
         }
 
         socket.join(`conversation:${convStr}`);
@@ -138,7 +142,6 @@ export const initSocketServer = (io: Server) => {
         try {
           const rawConvId = data.conversationId ?? data.activeConvId;
           const rawText = data.message ?? data.content ?? data.outgoingText;
-          console.log("received message",data);
 
           if (!rawConvId) {
             return socket.emit("message:error", { error: "Conversation ID is required" });
@@ -265,7 +268,6 @@ export const initSocketServer = (io: Server) => {
           userName: data.userName,
           typing: true,
         });
-        console.log(`[Socket] User ${uid} started typing in conversation ${convStr}`);
       }
     );
 
@@ -285,15 +287,15 @@ export const initSocketServer = (io: Server) => {
           userId: uid.toString(),
           typing: false,
         });
-        console.log(`[Socket] User ${uid} stopped typing in conversation ${convStr}`);
+        // console.log(`[Socket] User ${uid} stopped typing in conversation ${convStr}`);
       }
     );
 
     socket.on("disconnect", () => {
       const uid = (socket as CustomSocket).userId;
-      if (uid) {
-        console.log(`[Socket] User disconnected: ${uid}`);
-      }
+      // if (uid) {
+      //   console.log(`[Socket] User disconnected: ${uid}`);
+      // }
     });
   });
 };

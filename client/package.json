@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "migrate": "node scripts/migrate.mjs",
-    "socket": "node scripts/socket-server.mjs",
     "dev": "node scripts/migrate.mjs && tsx server.js",
     "build": "next build",
     "start": "node scripts/migrate.mjs && npm run seed:roles && NODE_ENV=production tsx server.js",
@@ -27,6 +26,7 @@
     "firebase": "^11.10.0",
     "formik": "^2.4.9",
     "framer-motion": "^13.1.0",
+    "jose": "^6.2.12",
     "jsonwebtoken": "^9.0.3",
     "leaflet": "^1.9.4",
     "leaflet-defaulticon-compatibility": "^0.1.2",

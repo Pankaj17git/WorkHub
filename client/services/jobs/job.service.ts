@@ -177,12 +177,16 @@ export const JobService = {
 
     // Availability validation if job has preferred schedule
     if (job.preferredDate && job.preferredStartTime && job.preferredEndTime) {
+      console.log("the skills", job.skills, typeof job.skills)
       const avail = await AvailabilityService.checkWorkerAvailability(
         actor.worker.id,
         job.preferredDate,
         job.preferredStartTime,
         job.preferredEndTime,
-        { serviceName: job.serviceName || undefined }
+        {
+          serviceName: job.serviceName || undefined,
+          requiredSkills: job.skills as string[],
+        }
       );
 
       if (!avail.isAvailable) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -9,21 +9,35 @@ import {
   CreditCard, 
   Smartphone, 
   Banknote, 
-  CheckCircle2, 
   Clock, 
   MapPin, 
   Lock,
   Sparkles
 } from 'lucide-react';
 import { MOCK_PROS } from '@/data/mockData';
+import { ServiceItem, Professional } from '@/types';
 import PriceTag from '@/components/ui/PriceTag';
 import { getToken } from '@/lib/auth-client';
+
+interface ActiveBookingData {
+  proId?: string;
+  proName?: string;
+  selectedServices?: ServiceItem[];
+  date?: string;
+  timeSlot?: string;
+  address?: string;
+  city?: string;
+  contactNumber?: string;
+  instructions?: string;
+}
 
 export default function BookingConfirmCheckoutPage() {
   const params = useParams();
   const router = useRouter();
   const proId = (params.id as string) || 'pro-1';
-  const pro = MOCK_PROS.find((p) => p.id === proId) || MOCK_PROS[0];
+  const fallbackPro = MOCK_PROS.find((p) => p.id === proId) || MOCK_PROS[0];
+  const [pro, setPro] = useState<Professional>(fallbackPro);
+  const [bookingData, setBookingData] = useState<ActiveBookingData | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'CASH'>('UPI');
   const [promoCode, setPromoCode] = useState('WORKHUB100');
@@ -31,8 +45,104 @@ export default function BookingConfirmCheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
-  // Booking calculation
-  const services = pro.services.slice(0, 1);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadBooking = () => {
+      try {
+        const stored = localStorage.getItem('active_booking');
+
+        if (stored) {
+          const parsed = JSON.parse(stored) as ActiveBookingData;
+
+          if (!cancelled) {
+            setBookingData(parsed);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse active_booking from localStorage', e);
+      }
+    };
+
+    const timeoutId = window.setTimeout(loadBooking, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+
+    // Fetch live worker details if real numeric worker ID
+    if (!proId || proId.startsWith('pro-')) return;
+
+    const fetchWorker = async () => {
+      try {
+        const res = await fetch(`/api/workers/${proId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const w = data.worker || data.data?.worker;
+          if (w) {
+            setPro({
+              id: w.id,
+              name: w.name,
+              title: w.headline || 'Verified Professional',
+              avatar: w.profileImage,
+              coverImage:
+                'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&auto=format&fit=crop&q=80',
+              category: w.skills?.[0] || 'Specialist',
+              location: w.address
+                ? `${w.address.city || ''}${w.address.state ? ', ' + w.address.state : ''}`
+                : 'Location on request',
+              distanceKm: 0,
+              rating: w.rating || 5.0,
+              reviewCount: w.reviewCount || 0,
+              completedJobs: w.reviewCount ? w.reviewCount * 3 : 12,
+              experienceYears: 5,
+              hourlyRate: w.hourlyRate || 299,
+              verified: w.isVerified,
+              online: true,
+              responseTimeMinutes: 15,
+              about: w.bio || 'Verified service professional on WorkHub.',
+              skills: w.skills || [],
+              services:
+                w.services && w.services.length > 0
+                  ? w.services.map((s: { id: string; name: string; price: number }) => ({
+                      id: s.id,
+                      name: s.name,
+                      description: `Professional service provided by ${w.name}`,
+                      price: s.price,
+                      durationMinutes: 60,
+                    }))
+                  : [
+                      {
+                        id: 'srv-1',
+                        name: `${w.skills?.[0] || 'Specialist'} Consultation & Service`,
+                        description: 'Standard specialist service booking',
+                        price: w.hourlyRate || 299,
+                        durationMinutes: 60,
+                        popular: true,
+                      },
+                    ],
+              reviews: [],
+              badges: [w.isVerified ? 'Verified Specialist' : 'Direct Hire', 'Top Rated'],
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch worker details for checkout:', err);
+      }
+    };
+
+    fetchWorker();
+  }, [proId]);
+
+  // Booking calculation: use services from active_booking if available, else first pro service
+  const services =
+    bookingData?.selectedServices && bookingData.selectedServices.length > 0
+      ? bookingData.selectedServices
+      : pro.services.slice(0, 1);
   const baseTotal = services.reduce((s, i) => s + i.price, 0);
   const platformFee = 49;
   const tax = Math.round(baseTotal * 0.18);
@@ -48,11 +158,28 @@ export default function BookingConfirmCheckoutPage() {
 
     setIsProcessing(true);
     setBookingError(null);
-    const getTomorrowDate = () => new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
+    const getTomorrowDate = () =>
+      new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+    const parseBookingDate = () => {
+      if (!bookingData?.date) return getTomorrowDate();
+      const d = new Date(bookingData.date);
+      return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : getTomorrowDate();
+    };
+
+    const parseTimes = () => {
+      const rawSlot = bookingData?.timeSlot || '10:00 - 12:00';
+      const parts = rawSlot.split('-');
+      return {
+        start: parts[0]?.trim() || '10:00',
+        end: parts[1]?.trim() || '12:00',
+      };
+    };
 
     try {
-      const rawWorkerId = pro.id.replace(/\D/g, '') || '1';
+      const numericWorkerId = pro.id.replace(/\D/g, '') || '1';
+      const times = parseTimes();
 
       const res = await fetch('/api/direct-hire-requests', {
         method: 'POST',
@@ -61,16 +188,18 @@ export default function BookingConfirmCheckoutPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          workerId: rawWorkerId,
+          workerId: numericWorkerId,
           serviceName: services[0]?.name || 'Home Maintenance Service',
-          requestedDate: getTomorrowDate(),
-          requestedStartTime: '10:00',
-          requestedEndTime: '12:00',
-          customerMessage: `Direct booking with payment mode ${paymentMethod}.`,
+          requestedDate: parseBookingDate(),
+          requestedStartTime: times.start,
+          requestedEndTime: times.end,
+          customerMessage: bookingData?.instructions
+            ? `${bookingData.instructions} (Payment mode: ${paymentMethod}, Contact: ${bookingData.contactNumber || 'N/A'})`
+            : `Direct booking with payment mode ${paymentMethod}.`,
           proposedPrice: grandTotal,
           address: {
-            address: 'Sector 35-C, House 241',
-            city: 'Chandigarh',
+            address: bookingData?.address || 'Customer Job Address',
+            city: bookingData?.city || 'Chandigarh',
             state: 'Punjab',
             country: 'India',
             latitude: 30.7333,
@@ -84,6 +213,10 @@ export default function BookingConfirmCheckoutPage() {
         setBookingError(data.error || 'Failed to submit direct hire request.');
         setIsProcessing(false);
         return;
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('active_booking');
       }
 
       router.push(`/book/${pro.id}/success?requestId=${data.request?.id || ''}`);
@@ -153,11 +286,13 @@ export default function BookingConfirmCheckoutPage() {
                 <div className="flex items-center gap-3 text-xs text-[#64748b] pt-1">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-[#0051d5]" />
-                    Wed, 19 Aug • 10:30 AM
+                    {bookingData?.date || 'Wed, 19 Aug'} • {bookingData?.timeSlot || '10:30 AM'}
                   </span>
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-[#64748b]" />
-                    Sector 35-C, Chandigarh
+                    {bookingData?.address
+                      ? `${bookingData.address}${bookingData.city ? ', ' + bookingData.city : ''}`
+                      : 'Address specified'}
                   </span>
                 </div>
               </div>

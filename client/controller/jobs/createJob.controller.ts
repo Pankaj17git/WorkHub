@@ -389,7 +389,7 @@ export const JobController = {
           assignments: {
             include: {
               worker: {
-                include: { user: { select: { name: true, profileImage: true } } },
+                include: { user: { select: { name: true, phone: true, profileImage: true } } },
               },
             },
           },

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 interface JwtPayload {
   userId?: string;
@@ -9,28 +10,32 @@ interface JwtPayload {
 }
 
 // Lightweight JWT payload decoder for Next.js Edge Middleware route gating
-function decodeJwtPayload(token: string): JwtPayload | null {
+async function decodeJwtPayload(
+  token: string
+): Promise<JwtPayload | null> {
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const payload = JSON.parse(new TextDecoder().decode(bytes));
+    const secret = process.env.JWT_SECRET;
 
-    // Check expiration if present
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
-      return null;
+    if (!secret) {
+      throw new Error("JWT_SECRET is not configured");
     }
 
-    return payload;
+    const secretKey = new TextEncoder().encode(secret);
+
+    const { payload } = await jwtVerify(token, secretKey, {
+      algorithms: ["HS256"],
+    });
+
+    return payload as JwtPayload;
   } catch {
+    // Invalid signature, malformed token, or expired token
     return null;
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const token = request.cookies.get("wh_token")?.value;
-  const payload = token ? decodeJwtPayload(token) : null;
+  const payload = token ? await decodeJwtPayload(token) : null;
   const { pathname } = request.nextUrl;
 
   // 1. HOME ROUTE: /
