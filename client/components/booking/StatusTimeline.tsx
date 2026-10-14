@@ -1,5 +1,7 @@
+'use client';
+
 import React from 'react';
-import { CheckCircle2, Clock, Truck, PlayCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Truck, PlayCircle, MapPin } from 'lucide-react';
 import { BookingTimelineStatus } from '@/types';
 
 interface Step {
@@ -11,32 +13,76 @@ interface Step {
 }
 
 interface StatusTimelineProps {
-  currentStatus: BookingTimelineStatus;
+  currentStatus: BookingTimelineStatus | string;
+  workerName?: string;
+  serviceName?: string;
+  location?: string;
+  confirmedAt?: string | null;
+  onTheWayAt?: string | null;
+  arrivedAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
 }
 
-export default function StatusTimeline({ currentStatus }: StatusTimelineProps) {
+function formatTimestamp(isoString?: string | null, fallback = 'Pending'): string {
+  if (!isoString) return fallback;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return fallback;
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return fallback;
+  }
+}
+
+export default function StatusTimeline({
+  currentStatus,
+  workerName = 'Specialist',
+  serviceName = 'Service',
+  location = 'your location',
+  confirmedAt,
+  onTheWayAt,
+  arrivedAt,
+  startedAt,
+  completedAt,
+}: StatusTimelineProps) {
   const steps: Step[] = [
     {
       id: 'CONFIRMED',
-      title: 'Booking Received & Confirmed',
-      subtitle: 'Your service request has been logged.',
-      timestamp: '10:02 AM',
-      state: 'COMPLETED',
-    },
-    {
-      id: 'PRO_ASSIGNED',
-      title: 'Pro Assigned & Slot Reserved',
-      subtitle: 'Rahul Sharma accepted the assignment.',
-      timestamp: '10:05 AM',
-      state: currentStatus === 'CONFIRMED' ? 'UPCOMING' : 'COMPLETED',
+      title: 'Specialist Assigned & Confirmed',
+      subtitle: `${workerName} confirmed and locked in the schedule.`,
+      timestamp: formatTimestamp(confirmedAt, currentStatus === 'ASSIGNED' ? 'Assigned' : 'Confirmed'),
+      state: currentStatus === 'ASSIGNED' ? 'ACTIVE' : 'COMPLETED',
     },
     {
       id: 'ON_THE_WAY',
-      title: 'Professional is On The Way',
-      subtitle: 'Navigating towards Sector 35-C.',
-      timestamp: '10:20 AM',
+      title: 'Specialist is On The Way',
+      subtitle: `${workerName} is en route towards ${location}.`,
+      timestamp: formatTimestamp(
+        onTheWayAt,
+        ['ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentStatus)
+          ? 'En Route'
+          : 'Pending'
+      ),
       state:
         currentStatus === 'ON_THE_WAY'
+          ? 'ACTIVE'
+          : ['ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentStatus)
+          ? 'COMPLETED'
+          : 'UPCOMING',
+    },
+    {
+      id: 'ARRIVED',
+      title: 'Arrived at Doorstep',
+      subtitle: `${workerName} reached your location. Share the Doorstep PIN.`,
+      timestamp: formatTimestamp(
+        arrivedAt,
+        ['ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentStatus)
+          ? 'Arrived'
+          : 'Pending'
+      ),
+      state:
+        currentStatus === 'ARRIVED'
           ? 'ACTIVE'
           : ['IN_PROGRESS', 'COMPLETED'].includes(currentStatus)
           ? 'COMPLETED'
@@ -45,8 +91,11 @@ export default function StatusTimeline({ currentStatus }: StatusTimelineProps) {
     {
       id: 'IN_PROGRESS',
       title: 'Service in Progress',
-      subtitle: 'Diagnostics & wiring repair initiated.',
-      timestamp: '10:45 AM',
+      subtitle: `PIN verified. ${serviceName} is actively underway.`,
+      timestamp: formatTimestamp(
+        startedAt,
+        ['IN_PROGRESS', 'COMPLETED'].includes(currentStatus) ? 'Started' : 'Pending'
+      ),
       state:
         currentStatus === 'IN_PROGRESS'
           ? 'ACTIVE'
@@ -57,8 +106,11 @@ export default function StatusTimeline({ currentStatus }: StatusTimelineProps) {
     {
       id: 'COMPLETED',
       title: 'Job Completed & Verified',
-      subtitle: 'Final safety testing done.',
-      timestamp: 'Pending',
+      subtitle: `Service successfully finished by ${workerName}. Quality verified.`,
+      timestamp: formatTimestamp(
+        completedAt,
+        currentStatus === 'COMPLETED' ? 'Completed' : 'Pending'
+      ),
       state: currentStatus === 'COMPLETED' ? 'COMPLETED' : 'UPCOMING',
     },
   ];
@@ -68,7 +120,9 @@ export default function StatusTimeline({ currentStatus }: StatusTimelineProps) {
       return <CheckCircle2 className="w-5 h-5 text-white" />;
     }
     if (state === 'ACTIVE') {
+      if (id === 'CONFIRMED') return <Clock className="w-4 h-4 text-white" />;
       if (id === 'ON_THE_WAY') return <Truck className="w-4 h-4 text-white animate-pulse" />;
+      if (id === 'ARRIVED') return <MapPin className="w-4 h-4 text-white animate-bounce" />;
       if (id === 'IN_PROGRESS') return <PlayCircle className="w-4 h-4 text-white animate-spin" />;
       return <Clock className="w-4 h-4 text-white" />;
     }
@@ -98,15 +152,30 @@ export default function StatusTimeline({ currentStatus }: StatusTimelineProps) {
             </div>
 
             {/* Step details */}
-            <div className="flex-1 bg-[#ffffff] border border-[#e2e8f0] p-4 rounded-xl shadow-xs">
+            <div
+              className={`flex-1 p-4 rounded-xl transition-all border ${
+                isActive
+                  ? 'bg-[#f8f9ff] border-[#0051d5] shadow-xs'
+                  : isDone
+                  ? 'bg-[#ffffff] border-[#e2e8f0]'
+                  : 'bg-[#fafafa] border-[#e2e8f0] opacity-75'
+              }`}
+            >
               <div className="flex items-center justify-between">
-                <h4
-                  className={`text-sm font-bold ${
-                    isActive ? 'text-[#0051d5]' : isDone ? 'text-[#091426]' : 'text-[#64748b]'
-                  }`}
-                >
-                  {step.title}
-                </h4>
+                <div className="flex items-center gap-2">
+                  <h4
+                    className={`text-sm font-bold ${
+                      isActive ? 'text-[#0051d5]' : isDone ? 'text-[#091426]' : 'text-[#64748b]'
+                    }`}
+                  >
+                    {step.title}
+                  </h4>
+                  {isActive && (
+                    <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase font-geist bg-[#eff6ff] text-[#0051d5] border border-[#bfdbfe] rounded-full">
+                      Live
+                    </span>
+                  )}
+                </div>
                 <span className="text-[11px] font-geist text-[#94a3b8]">{step.timestamp}</span>
               </div>
               <p className="text-xs text-[#475569] mt-0.5">{step.subtitle}</p>

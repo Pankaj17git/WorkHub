@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -14,20 +14,115 @@ import {
   Sparkles,
 } from 'lucide-react';
 import OtpPinInput from '@/components/ui/OtpPinInput';
-import { MOCK_INCOMING_REQUESTS } from '@/data/mockWorkerData';
 import { getToken } from '@/lib/auth-client';
+
+interface AssignmentJob {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAvatar: string;
+  serviceName: string;
+  serviceCategory: string;
+  location: string;
+  earningsAmount: number;
+  status: string;
+  notes?: string;
+}
 
 export default function WorkerJobDetailsExecutionPage() {
   const params = useParams();
   const jobId = (params.id as string) || '1';
   const numericId = jobId.replace(/\D/g, '') || '1';
   
-  const job = MOCK_INCOMING_REQUESTS.find((j) => j.id === jobId) || MOCK_INCOMING_REQUESTS[0];
+  const [job, setJob] = useState<AssignmentJob | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
-  const [currentStep, setCurrentStep] = useState<'START_TRAVEL' | 'ON_THE_WAY' | 'ARRIVED_PIN' | 'IN_PROGRESS' | 'COMPLETED'>('START_TRAVEL');
+  const [currentStep, setCurrentStep] = useState<'CONFIRM_ASSIGNMENT' | 'START_TRAVEL' | 'ON_THE_WAY' | 'ARRIVED_PIN' | 'IN_PROGRESS' | 'COMPLETED'>('CONFIRM_ASSIGNMENT');
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
+
+  useEffect(() => {
+    const fetchAssignment = async () => {
+      const token = getToken();
+      if (!token) {
+        setPageLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch('/api/worker/jobs?type=assignments', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const apiData = data.data || data;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const found = apiData.assignments?.find((a: any) => a.id === jobId);
+          if (found) {
+            const address = found.job?.address || found.directHire?.address;
+            const location = address
+              ? `${address.address || ''}, ${address.city || ''}`
+              : 'Location not specified';
+            const serviceName = found.job?.serviceName || found.directHire?.serviceName || 'Service';
+
+            setJob({
+              id: found.id,
+              customerName: found.customer?.name || 'Customer',
+              customerPhone: found.customer?.phone || '',
+              customerAvatar: found.customer?.profileImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+              serviceName,
+              serviceCategory: found.job?.skills?.[0] || serviceName,
+              location,
+              earningsAmount: found.job?.maxAmount || found.directHire?.proposedPrice || 0,
+              status: found.status,
+              notes: found.directHire?.customerMessage || found.job?.description,
+            });
+
+            // Set initial step based on assignment status
+            switch (found.status) {
+              case 'ASSIGNED': setCurrentStep('CONFIRM_ASSIGNMENT'); break;
+              case 'CONFIRMED': setCurrentStep('START_TRAVEL'); break;
+              case 'ON_THE_WAY': setCurrentStep('ON_THE_WAY'); break;
+              case 'ARRIVED': setCurrentStep('ARRIVED_PIN'); break;
+              case 'IN_PROGRESS': setCurrentStep('IN_PROGRESS'); break;
+              case 'COMPLETED': setCurrentStep('COMPLETED'); break;
+              default: setCurrentStep('CONFIRM_ASSIGNMENT');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch assignment:', err);
+      } finally {
+        setPageLoading(false);
+      }
+    };
+    fetchAssignment();
+  }, [jobId]);
+
+  // Step 0: Confirm Assignment
+  const handleConfirmAssignment = async () => {
+    const token = getToken();
+    setLoadingAction(true);
+    if (token) {
+      try {
+        const res = await fetch(`/api/assignments/${numericId}/confirm`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          setJob((prev) => (prev ? { ...prev, status: 'CONFIRMED' } : prev));
+          setCurrentStep('START_TRAVEL');
+          setLoadingAction(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to confirm assignment:', err);
+      }
+    }
+    setJob((prev) => (prev ? { ...prev, status: 'CONFIRMED' } : prev));
+    setCurrentStep('START_TRAVEL');
+    setLoadingAction(false);
+  };
 
   // Step 1: Start Travel
   const handleStartTravel = async () => {
@@ -126,6 +221,32 @@ export default function WorkerJobDetailsExecutionPage() {
     setLoadingAction(false);
   };
 
+  if (pageLoading) {
+    return (
+      <div className="max-w-4xl mx-auto p-12 text-center bg-white border border-[#e2e8f0] rounded-2xl">
+        <div className="w-8 h-8 border-2 border-[#0051d5] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-[#64748b] mt-3">Loading job details...</p>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="max-w-4xl mx-auto p-12 text-center bg-white border border-[#e2e8f0] rounded-2xl space-y-3">
+        <h3 className="text-base font-bold text-[#091426]">Job Assignment Not Found</h3>
+        <p className="text-xs text-[#64748b]">
+          The requested job assignment could not be found or you do not have permission to view it.
+        </p>
+        <Link
+          href="/worker/jobs"
+          className="inline-block px-4 py-2 bg-[#0051d5] text-white text-xs font-bold rounded-xl"
+        >
+          Back to My Jobs
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       
@@ -190,51 +311,72 @@ export default function WorkerJobDetailsExecutionPage() {
       <div className="bg-[#ffffff] border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
         
         {/* Milestone State Indicator */}
-        <div className="flex items-center justify-between pb-6 border-b border-[#e2e8f0] overflow-x-auto gap-4">
+        <div className="flex items-center justify-between pb-6 border-b border-[#e2e8f0] overflow-x-auto gap-3">
           <div className="flex items-center gap-2 shrink-0">
             <span
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-geist ${
-                ['ON_THE_WAY', 'ARRIVED_PIN', 'IN_PROGRESS', 'COMPLETED'].includes(currentStep)
-                  ? 'bg-[#0051d5] text-white'
-                  : 'bg-[#f1f5f9] text-[#64748b]'
+                currentStep === 'CONFIRM_ASSIGNMENT'
+                  ? 'bg-[#0051d5] text-white shadow-xs'
+                  : 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
               }`}
             >
-              1
+              {currentStep === 'CONFIRM_ASSIGNMENT' ? '1' : '✓'}
             </span>
-            <span className="text-xs font-bold text-[#091426]">1. Travel & Site</span>
+            <span className="text-xs font-bold text-[#091426]">1. Confirm</span>
           </div>
 
-          <span className="w-8 h-px bg-[#e2e8f0] shrink-0" />
-
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-geist ${
-                ['ARRIVED_PIN', 'IN_PROGRESS', 'COMPLETED'].includes(currentStep)
-                  ? 'bg-[#0051d5] text-white'
-                  : 'bg-[#f1f5f9] text-[#64748b]'
-              }`}
-            >
-              2
-            </span>
-            <span className="text-xs font-bold text-[#091426]">2. Doorstep PIN</span>
-          </div>
-
-          <span className="w-8 h-px bg-[#e2e8f0] shrink-0" />
+          <span className="w-6 h-px bg-[#e2e8f0] shrink-0" />
 
           <div className="flex items-center gap-2 shrink-0">
             <span
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-geist ${
-                ['IN_PROGRESS', 'COMPLETED'].includes(currentStep)
+                currentStep === 'START_TRAVEL'
                   ? 'bg-[#0051d5] text-white'
+                  : ['ON_THE_WAY', 'ARRIVED_PIN', 'IN_PROGRESS', 'COMPLETED'].includes(currentStep)
+                  ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
                   : 'bg-[#f1f5f9] text-[#64748b]'
               }`}
             >
-              3
+              {['ON_THE_WAY', 'ARRIVED_PIN', 'IN_PROGRESS', 'COMPLETED'].includes(currentStep) ? '✓' : '2'}
             </span>
-            <span className="text-xs font-bold text-[#091426]">3. In Progress</span>
+            <span className="text-xs font-bold text-[#091426]">2. Travel</span>
           </div>
 
-          <span className="w-8 h-px bg-[#e2e8f0] shrink-0" />
+          <span className="w-6 h-px bg-[#e2e8f0] shrink-0" />
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-geist ${
+                currentStep === 'ARRIVED_PIN'
+                  ? 'bg-[#0051d5] text-white'
+                  : ['IN_PROGRESS', 'COMPLETED'].includes(currentStep)
+                  ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
+                  : 'bg-[#f1f5f9] text-[#64748b]'
+              }`}
+            >
+              {['IN_PROGRESS', 'COMPLETED'].includes(currentStep) ? '✓' : '3'}
+            </span>
+            <span className="text-xs font-bold text-[#091426]">3. Doorstep PIN</span>
+          </div>
+
+          <span className="w-6 h-px bg-[#e2e8f0] shrink-0" />
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-geist ${
+                currentStep === 'IN_PROGRESS'
+                  ? 'bg-[#0051d5] text-white'
+                  : currentStep === 'COMPLETED'
+                  ? 'bg-[#ecfdf5] text-[#0d9488] border border-[#a7f3d0]'
+                  : 'bg-[#f1f5f9] text-[#64748b]'
+              }`}
+            >
+              {currentStep === 'COMPLETED' ? '✓' : '4'}
+            </span>
+            <span className="text-xs font-bold text-[#091426]">4. In Progress</span>
+          </div>
+
+          <span className="w-6 h-px bg-[#e2e8f0] shrink-0" />
 
           <div className="flex items-center gap-2 shrink-0">
             <span
@@ -244,13 +386,49 @@ export default function WorkerJobDetailsExecutionPage() {
                   : 'bg-[#f1f5f9] text-[#64748b]'
               }`}
             >
-              4
+              5
             </span>
-            <span className="text-xs font-bold text-[#091426]">4. Finished</span>
+            <span className="text-xs font-bold text-[#091426]">5. Finished</span>
           </div>
         </div>
 
         {/* Dynamic Action Section based on currentStep */}
+
+        {currentStep === 'CONFIRM_ASSIGNMENT' && (
+          <div className="space-y-6 text-center py-6">
+            <div className="w-16 h-16 rounded-full bg-[#eff6ff] text-[#0051d5] flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-1 max-w-md mx-auto">
+              <h3 className="text-xl font-bold text-[#091426]">
+                Confirm Your Job Assignment
+              </h3>
+              <p className="text-xs text-[#64748b]">
+                You have been assigned to this job at {job.location}. Please confirm your availability to notify the customer.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+              <button
+                onClick={handleConfirmAssignment}
+                disabled={loadingAction}
+                className="w-full sm:w-auto flex-1 py-3 px-6 bg-[#0051d5] hover:bg-[#0042b0] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Confirm Assignment</span>
+              </button>
+              <button
+                onClick={handleStartTravel}
+                disabled={loadingAction}
+                className="w-full sm:w-auto py-3 px-4 bg-[#f8f9ff] hover:bg-[#eff6ff] text-[#0051d5] text-xs font-bold rounded-xl border border-[#bfdbfe] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>Start Travel Directly</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {currentStep === 'START_TRAVEL' && (
           <div className="space-y-6 text-center py-6">

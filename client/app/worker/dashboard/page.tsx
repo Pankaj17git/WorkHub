@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import {
   Briefcase,
@@ -135,6 +135,9 @@ export default function WorkerDashboardPage() {
   const workerAvatar =
     session?.profileImage ||
     'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400&auto=format&fit=crop&q=80';
+  useEffect(() => {
+    console.log("worker dashboard",session)
+  },[session])
 
   const getJobsForActiveTab = () => {
     switch (activeTab) {
