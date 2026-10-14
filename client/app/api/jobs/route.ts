@@ -49,18 +49,10 @@ export async function GET(request: NextRequest) {
   const userId = authMiddleware(request);
 
   /**
-   * If neither authenticated nor providing filter params, fall back to
-   * the basic marketplace listing (backward-compatible).
+   * If unauthenticated, or "mine" query is requested, fall back to
+   * the basic marketplace listing which doesn't require worker origin coordinates.
    */
-  if ((!userId || typeof userId === "object") && !hasFilterParams) {
-    return JobController.getjobs(request);
-  }
-
-  /**
-   * If "mine" query is requested but we have no userId, fall back to
-   * the basic controller which handles its own auth.
-   */
-  if (isMineQuery) {
+  if (!userId || typeof userId === "object" || isMineQuery) {
     return JobController.getjobs(request);
   }
 
@@ -100,20 +92,27 @@ export async function GET(request: NextRequest) {
     }
 
     /* ── 5. Call the geo service to find nearby jobs ─────────────── */
-    const result = await findNearbyJobs({
-      origin:      { userId: userId! },
-      page,
-      limit,
-      skill:       skill       || undefined,
-      query:       query       || undefined,
-      serviceName: service     || undefined,
-      status:      statusFilter,
-      minAmount:   minAmount   ? Number(minAmount) : undefined,
-      maxAmount:   maxAmount   ? Number(maxAmount) : undefined,
-      radius:      Number(distParam),
-      unit:        "km",
-      sortBy,
-    });
+    let result;
+    try {
+      result = await findNearbyJobs({
+        origin:      { userId: userId! },
+        page,
+        limit,
+        skill:       skill       || undefined,
+        query:       query       || undefined,
+        serviceName: service     || undefined,
+        status:      statusFilter,
+        minAmount:   minAmount   ? Number(minAmount) : undefined,
+        maxAmount:   maxAmount   ? Number(maxAmount) : undefined,
+        radius:      Number(distParam),
+        unit:        "km",
+        sortBy,
+      });
+    } catch (geoError) {
+      // If worker has no address or origin cannot be resolved, gracefully fallback to general jobs listing
+      console.warn("Could not calculate nearby distance for worker, falling back to general listing:", geoError);
+      return JobController.getjobs(request);
+    }
 
     /* ── 6. Shape response to match the frontend expectations ───── */
     const jobs = result.data.map((j) => ({

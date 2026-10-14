@@ -56,6 +56,9 @@ export const initSocketServer = (io: Server) => {
         const uid = decoded.userId || decoded.sub;
         if (uid) {
           (socket as CustomSocket).userId = uid.toString();
+        } else {
+          socket.emit("auth:error", { message: "Invalid authentication token" });
+          return;
         }
       }
       next();
@@ -80,6 +83,7 @@ export const initSocketServer = (io: Server) => {
         socket.emit("auth:success", { userId: uid });
       } else {
         socket.emit("auth:error", { message: "Invalid authentication token" });
+        return;
       }
     });
 
@@ -104,6 +108,9 @@ export const initSocketServer = (io: Server) => {
             socket.emit("conversation:error", { message: "Not a member of this conversation" });
             return;
           }
+        } else {
+          socket.emit("auth:error", { message: "Invalid authentication token" });
+          return;
         }
 
         socket.join(`conversation:${convStr}`);

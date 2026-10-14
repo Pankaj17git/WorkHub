@@ -16,7 +16,11 @@ export const swaggerDefinition: SwaggerDefinition = {
   },
   servers: [
     {
-      url: "http://localhost:3001",
+      url: "/",
+      description: "Current Server",
+    },
+    {
+      url: "http://localhost:3000",
       description: "Local Development Server",
     },
   ],
