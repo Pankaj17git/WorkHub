@@ -19,9 +19,9 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react';
-import { clearSession, getSessionSnapshot, subscribeToSession, getToken } from '@/lib/auth-client';
-import api from '@/lib/api';
+import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
 import WorkHubLogo from '@/components/ui/WorkHubLogo';
+import { useNotification } from '@/context/NotificationContext';
 
 function NavbarContent() {
   const router = useRouter();
@@ -30,8 +30,9 @@ function NavbarContent() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { unreadCount } = useNotification();
 
   const profileRef = useRef<HTMLDivElement>(null);
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
@@ -39,21 +40,6 @@ function NavbarContent() {
   const isCustomer = session?.role === 'CUSTOMER';
   const isWorker = session?.role === 'WORKER';
 
-  // Fetch unread notifications for logged-in user
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      return;
-    }
-
-    api.get('/api/notifications?unread=true')
-      .then((res) => {
-        if (res.data?.notifications) {
-          setUnreadCount(res.data.notifications.length);
-        }
-      })
-      .catch(() => {});
-  }, [session]);
 
   const closeMenus = () => {
     setProfileDropdownOpen(false);

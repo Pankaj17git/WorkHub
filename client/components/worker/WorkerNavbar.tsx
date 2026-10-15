@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
 } from 'lucide-react';
 import { clearSession, getSessionSnapshot, subscribeToSession } from '@/lib/auth-client';
+import { useNotification } from '@/context/NotificationContext';
 
 interface WorkerNavbarProps {
   onToggleSidebar?: () => void;
@@ -23,6 +24,7 @@ interface WorkerNavbarProps {
 export default function WorkerNavbar({ onToggleSidebar, className = '' }: WorkerNavbarProps) {
   const router = useRouter();
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, () => null);
+  const { unreadCount } = useNotification();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -89,7 +91,11 @@ export default function WorkerNavbar({ onToggleSidebar, className = '' }: Worker
           title="Notifications"
         >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </Link>
 
         {/* Worker User Pill */}

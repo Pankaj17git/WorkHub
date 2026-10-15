@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AvailabilityCheckOptions } from "@/types";
+import { hasMatchingSkills, getRelatedSkillKeys } from "@/lib/skill-mapping";
 
 export interface AvailabilityCheckResult {
   isAvailable: boolean;
@@ -94,22 +95,20 @@ export const AvailabilityService = {
       if (!hasService) {
         // Collect required skill names: explicit list from options, or fall back to serviceName
         const requiredSkills = options.requiredSkills?.length
-          ? options.requiredSkills.map((s) => s.toLowerCase())
-          : [options.serviceName.toLowerCase()];
+          ? options.requiredSkills
+          : [options.serviceName];
 
         const workerSkillNames = worker.skills.map(
-          (ws: { skill: { name: string; key: string } }) => ws.skill.name.toLowerCase()
+          (ws: { skill: { name: string; key: string } }) => ws.skill.name
         );
         const workerSkillKeys = worker.skills.map(
-          (ws: { skill: { name: string; key: string } }) => ws.skill.key.toLowerCase()
+          (ws: { skill: { name: string; key: string } }) => ws.skill.key
         );
 
-        const hasMatchingSkill = requiredSkills.some(
-          (req) => workerSkillNames.includes(req) || workerSkillKeys.includes(req)
-        );
-        console.log("the worker hasmatching skills",hasMatchingSkill, workerSkillNames,options )
+        const hasSkillMatch = hasMatchingSkills(workerSkillKeys, workerSkillNames, requiredSkills);
+        console.log("the worker hasmatching skills", hasSkillMatch, workerSkillKeys, workerSkillNames, requiredSkills);
 
-        if (!hasMatchingSkill) {
+        if (!hasSkillMatch) {
           return {
             isAvailable: false,
             reason: `Worker does not offer the service "${options.serviceName}" and has no matching skill`,

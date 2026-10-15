@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AuthActor } from "@/lib/authActor";
 import { AssignmentPolicy, AssignmentAction } from "@/policies/AssignmentPolicy";
+import { NotificationService } from "../notification/notification.service";
 
 export const AssignmentStateService = {
   /**
@@ -144,6 +145,25 @@ export const AssignmentStateService = {
       }
     }
 
+    // Notify customer about service completion
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: assignment.customerId },
+      });
+      if (customer) {
+        await NotificationService.notifyUser(
+          customer.userId,
+          "ASSIGNMENT_COMPLETED",
+          "Service Completed!",
+          "Worker has completed your service. Please share a review of your experience.",
+          "ASSIGNMENT",
+          assignment.id
+        );
+      }
+    } catch (e) {
+      console.error("[Notification] Assignment complete notification error:", e);
+    }
+
     return updatedAssignment;
   },
 
@@ -165,8 +185,8 @@ export const AssignmentStateService = {
       throw new Error("Cannot cancel a completed assignment");
     }
 
-    return prisma.$transaction(async (tx) => {
-      const cancelled = await tx.assignment.update({
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const updated = await tx.assignment.update({
         where: { id: assignmentId },
         data: {
           status: "CANCELLED",
@@ -190,8 +210,43 @@ export const AssignmentStateService = {
         }
       }
 
-      return cancelled;
+      return updated;
     });
+
+    // Notify the other party about cancellation
+    try {
+      if (actor.customer) {
+        // Customer cancelled -> notify worker
+        const worker = await prisma.worker.findUnique({ where: { id: assignment.workerId } });
+        if (worker) {
+          await NotificationService.notifyUser(
+            worker.userId,
+            "ASSIGNMENT_CANCELLED",
+            "Assignment Cancelled",
+            `Customer cancelled the scheduled service${reason ? `: "${reason}"` : "."}`,
+            "ASSIGNMENT",
+            assignment.id
+          );
+        }
+      } else if (actor.worker) {
+        // Worker cancelled -> notify customer
+        const customer = await prisma.customer.findUnique({ where: { id: assignment.customerId } });
+        if (customer) {
+          await NotificationService.notifyUser(
+            customer.userId,
+            "ASSIGNMENT_CANCELLED",
+            "Assignment Cancelled",
+            `Worker cancelled the scheduled service${reason ? `: "${reason}"` : "."}`,
+            "ASSIGNMENT",
+            assignment.id
+          );
+        }
+      }
+    } catch (e) {
+      console.error("[Notification] Assignment cancellation notification error:", e);
+    }
+
+    return cancelled;
   },
 
   /**
@@ -232,9 +287,57 @@ export const AssignmentStateService = {
       dataToUpdate.confirmedAt = new Date();
     }
 
-    return prisma.assignment.update({
+    const updated = await prisma.assignment.update({
       where: { id: assignmentId },
       data: dataToUpdate,
     });
+
+    // Notify customer on progress milestones
+    try {
+      const customer = await prisma.customer.findUnique({ where: { id: assignment.customerId } });
+      if (customer) {
+        if (targetStatus === "CONFIRMED") {
+          await NotificationService.notifyUser(
+            customer.userId,
+            "ASSIGNMENT_CONFIRMED",
+            "Assignment Confirmed",
+            "Worker confirmed the schedule for your booking.",
+            "ASSIGNMENT",
+            assignment.id
+          );
+        } else if (targetStatus === "ON_THE_WAY") {
+          await NotificationService.notifyUser(
+            customer.userId,
+            "ASSIGNMENT_ON_THE_WAY",
+            "Worker On The Way!",
+            "Your service specialist has started traveling to your location.",
+            "ASSIGNMENT",
+            assignment.id
+          );
+        } else if (targetStatus === "ARRIVED") {
+          await NotificationService.notifyUser(
+            customer.userId,
+            "ASSIGNMENT_ARRIVED",
+            "Worker Arrived at Location",
+            "Worker has reached your doorstep. Please share your Start OTP to commence work.",
+            "ASSIGNMENT",
+            assignment.id
+          );
+        } else if (targetStatus === "IN_PROGRESS") {
+          await NotificationService.notifyUser(
+            customer.userId,
+            "ASSIGNMENT_STARTED",
+            "Service Underway",
+            "Worker verified OTP and commenced the service.",
+            "ASSIGNMENT",
+            assignment.id
+          );
+        }
+      }
+    } catch (e) {
+      console.error("[Notification] Transition notification error:", e);
+    }
+
+    return updated;
   },
 };
