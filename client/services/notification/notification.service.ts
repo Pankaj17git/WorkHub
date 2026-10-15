@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { emitToUser } from "../chat/socket.service";
 
 export type AppNotificationType =
   | "JOB_APPLICATION_SUBMITTED"
@@ -24,7 +25,7 @@ export type AppNotificationType =
 
 export const NotificationService = {
   /**
-   * Dispatch system or user alert
+   * Dispatch system or user alert and broadcast real-time via Socket
    */
   async notifyUser(
     userId: bigint,
@@ -34,7 +35,7 @@ export const NotificationService = {
     refType?: string,
     refId?: bigint
   ) {
-    return prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId,
         type,
@@ -44,6 +45,29 @@ export const NotificationService = {
         referenceId: refId,
       },
     });
+
+    const unreadCount = await prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+
+    const formatted = {
+      id: notification.id.toString(),
+      userId: notification.userId.toString(),
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      message: notification.body, // compatibility with frontend components expecting message
+      referenceType: notification.referenceType,
+      referenceId: notification.referenceId ? notification.referenceId.toString() : null,
+      isRead: notification.isRead,
+      createdAt: notification.createdAt.toISOString(),
+    };
+
+    // Broadcast in real-time to the recipient's socket room
+    emitToUser(userId, "notification:new", formatted);
+    emitToUser(userId, "notification:count", { unreadCount });
+
+    return notification;
   },
 
   /**
@@ -61,15 +85,51 @@ export const NotificationService = {
   },
 
   /**
+   * Get unread notification count
+   */
+  async getUnreadCount(userId: bigint) {
+    return prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+  },
+
+  /**
    * Mark notification as read
    */
   async markAsRead(notificationId: bigint, userId: bigint) {
-    return prisma.notification.updateMany({
+    const res = await prisma.notification.updateMany({
       where: {
         id: notificationId,
         userId,
       },
       data: { isRead: true },
     });
+
+    const unreadCount = await prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+
+    emitToUser(userId, "notification:read", { id: notificationId.toString() });
+    emitToUser(userId, "notification:count", { unreadCount });
+
+    return { success: true, count: res.count, unreadCount };
+  },
+
+  /**
+   * Mark all notifications as read for a user
+   */
+  async markAllAsRead(userId: bigint) {
+    const res = await prisma.notification.updateMany({
+      where: {
+        userId,
+        isRead: false,
+      },
+      data: { isRead: true },
+    });
+
+    emitToUser(userId, "notification:allRead", {});
+    emitToUser(userId, "notification:count", { unreadCount: 0 });
+
+    return { success: true, count: res.count, unreadCount: 0 };
   },
 };

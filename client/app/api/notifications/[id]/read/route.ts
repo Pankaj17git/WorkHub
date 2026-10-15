@@ -47,3 +47,6 @@ export async function POST(
     return apiResponse.badRequest(message);
   }
 }
+
+export const PATCH = POST;
+

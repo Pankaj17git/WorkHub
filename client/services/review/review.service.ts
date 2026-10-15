@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AuthActor } from "@/lib/authActor";
+import { NotificationService } from "../notification/notification.service";
 
 export const ReviewService = {
   /**
@@ -42,7 +43,7 @@ export const ReviewService = {
       throw new Error("A review has already been submitted for this assignment");
     }
 
-    return prisma.review.create({
+    const createdReview = await prisma.review.create({
       data: {
         assignmentId: assignment.id,
         customerId: actor.customer.id,
@@ -58,6 +59,25 @@ export const ReviewService = {
         },
       },
     });
+
+    // Notify worker via socket
+    try {
+      const worker = await prisma.worker.findUnique({ where: { id: assignment.workerId } });
+      if (worker) {
+        await NotificationService.notifyUser(
+          worker.userId,
+          "NEW_REVIEW",
+          "New Review Received!",
+          `${actor.name || "A customer"} rated your service ${input.rating} star${input.rating > 1 ? "s" : ""}${input.comment ? `: "${input.comment}"` : "."}`,
+          "ASSIGNMENT",
+          assignment.id
+        );
+      }
+    } catch (e) {
+      console.error("[Notification] Review notification error:", e);
+    }
+
+    return createdReview;
   },
 
   /**

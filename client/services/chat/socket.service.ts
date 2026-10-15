@@ -43,7 +43,28 @@ function resolveUserId(socket: Socket, token?: string): string | null {
   return null;
 }
 
+const globalForSocket = globalThis as unknown as {
+  io?: Server;
+};
+
+export const getSocketServer = (): Server | null => {
+  return globalForSocket.io || null;
+};
+
+export const emitToUser = (
+  userId: string | bigint | number,
+  event: string,
+  payload: unknown
+): boolean => {
+  const io = getSocketServer();
+  if (!io) return false;
+  io.to(`user:${userId.toString()}`).emit(event, payload);
+  return true;
+};
+
 export const initSocketServer = (io: Server) => {
+  globalForSocket.io = io;
+
   // Authentication middleware
   io.use((socket, next) => {
     try {
@@ -84,6 +105,62 @@ export const initSocketServer = (io: Server) => {
       } else {
         socket.emit("auth:error", { message: "Invalid authentication token" });
         return;
+      }
+    });
+
+    // Notification mark as read via socket
+    socket.on("notification:read", async (notificationId: string | number) => {
+      try {
+        const uid = resolveUserId(socket);
+        if (!uid || !notificationId) return;
+        await prisma.notification.updateMany({
+          where: {
+            id: BigInt(notificationId.toString()),
+            userId: BigInt(uid),
+          },
+          data: { isRead: true },
+        });
+        const unreadCount = await prisma.notification.count({
+          where: { userId: BigInt(uid), isRead: false },
+        });
+        io.to(`user:${uid}`).emit("notification:read", { id: notificationId.toString() });
+        io.to(`user:${uid}`).emit("notification:count", { unreadCount });
+      } catch (err) {
+        console.error("[Socket] notification:read error:", err);
+      }
+    });
+
+    // Notification mark all as read via socket
+    socket.on("notification:readAll", async () => {
+      try {
+        const uid = resolveUserId(socket);
+        if (!uid) return;
+        await prisma.notification.updateMany({
+          where: { userId: BigInt(uid), isRead: false },
+          data: { isRead: true },
+        });
+        io.to(`user:${uid}`).emit("notification:allRead", {});
+        io.to(`user:${uid}`).emit("notification:count", { unreadCount: 0 });
+      } catch (err) {
+        console.error("[Socket] notification:readAll error:", err);
+      }
+    });
+
+    // Notification fetch count
+    socket.on("notification:getUnreadCount", async (callback?: (data: { unreadCount: number }) => void) => {
+      try {
+        const uid = resolveUserId(socket);
+        if (!uid) return;
+        const unreadCount = await prisma.notification.count({
+          where: { userId: BigInt(uid), isRead: false },
+        });
+        if (typeof callback === "function") {
+          callback({ unreadCount });
+        } else {
+          socket.emit("notification:count", { unreadCount });
+        }
+      } catch (err) {
+        console.error("[Socket] notification:getUnreadCount error:", err);
       }
     });
 

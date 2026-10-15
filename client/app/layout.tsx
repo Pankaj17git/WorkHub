@@ -5,6 +5,8 @@ import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 import RouteNotice from "@/components/ui/RouteNotice";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
+import NotificationToastContainer from "@/components/notifications/NotificationToastContainer";
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -45,7 +47,10 @@ export default function RootLayout({
           <RouteNotice />
         </Suspense>
         <AuthProvider>
-          <AppShell>{children}</AppShell>
+          <NotificationProvider>
+            <NotificationToastContainer />
+            <AppShell>{children}</AppShell>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>
