@@ -42,6 +42,29 @@ export interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
 
+const EMPTY_NOTIFICATIONS: AppNotification[] = [];
+const EMPTY_TOASTS: ToastItem[] = [];
+interface NotificationsResponse {
+  notifications?: AppNotification[];
+  unreadCount?: number;
+  data?: {
+    notifications?: AppNotification[];
+    unreadCount?: number;
+  };
+}
+
+function parseNotificationsResponse(payload: NotificationsResponse): {
+  list: AppNotification[];
+  unread: number;
+} {
+  const list = payload.notifications ?? payload.data?.notifications ?? [];
+  const count = payload.unreadCount ?? payload.data?.unreadCount;
+  return {
+    list,
+    unread: typeof count === 'number' ? count : list.filter((n) => !n.isRead).length,
+  };
+}
+
 // Gentle Web Audio API synthesizer for incoming notification chime
 function playNotificationSound() {
   try {
@@ -113,17 +136,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (!token || !isAuthenticated) return;
       try {
         setLoading(true);
-        const res = await api.get(`/api/notifications${unreadOnly ? '?unread=true' : ''}`);
-        const data = res.data;
-        const list = data.notifications || data.data?.notifications || [];
+        const res = await api.get<NotificationsResponse>(
+          `/api/notifications${unreadOnly ? '?unread=true' : ''}`
+        );
+        const { list, unread } = parseNotificationsResponse(res.data);
         setNotifications(list);
-        if (typeof data.unreadCount === 'number') {
-          setUnreadCount(data.unreadCount);
-        } else if (typeof data.data?.unreadCount === 'number') {
-          setUnreadCount(data.data.unreadCount);
-        } else {
-          setUnreadCount(list.filter((n: AppNotification) => !n.isRead).length);
-        }
+        setUnreadCount(unread);
       } catch (err) {
         console.error('[NotificationContext] Failed to load notifications:', err);
       } finally {
@@ -170,16 +188,27 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Sync socket authentication and initial fetch
   useEffect(() => {
-    if (isAuthenticated && token) {
-      syncSocketAuth(token);
-      fetchNotifications();
-    } else {
-      setNotifications([]);
-      setUnreadCount(0);
-      setToasts([]);
-    }
-  }, [isAuthenticated, token, fetchNotifications]);
+    if (!isAuthenticated || !token) return;
 
+    syncSocketAuth(token);
+
+    let cancelled = false;
+    api
+      .get<NotificationsResponse>('/api/notifications')
+      .then((res) => {
+        if (cancelled) return;
+        const { list, unread } = parseNotificationsResponse(res.data);
+        setNotifications(list);
+        setUnreadCount(unread);
+      })
+      .catch((err) => {
+        console.error('[NotificationContext] Failed to load notifications:', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, token]);
   // Socket event listeners
   useEffect(() => {
     const handleNewNotification = (notification: AppNotification) => {
@@ -224,10 +253,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   return (
     <NotificationContext.Provider
       value={{
-        notifications,
-        unreadCount,
+        notifications: isAuthenticated ? notifications : EMPTY_NOTIFICATIONS,
+        unreadCount: isAuthenticated ? unreadCount : 0,
         loading,
-        toasts,
+        toasts: isAuthenticated ? toasts : EMPTY_TOASTS,
         dismissToast,
         fetchNotifications,
         markAsRead,
