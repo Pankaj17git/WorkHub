@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AuthActor } from "@/lib/authActor";
 import { AvailabilityService } from "../worker/availability.service";
 import { addressService } from "../address.service";
+import { NotificationService } from "../notification/notification.service";
 
 export interface CreateDirectHireInput {
   workerId: bigint;
@@ -49,7 +50,7 @@ export const DirectHireService = {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
-    return prisma.directHireRequest.create({
+    const createdReq = await prisma.directHireRequest.create({
       data: {
         customerId: actor.customer.id,
         workerId: input.workerId,
@@ -71,6 +72,22 @@ export const DirectHireService = {
         },
       },
     });
+
+    // Notify worker via socket
+    try {
+      await NotificationService.notifyUser(
+        worker.userId,
+        "DIRECT_HIRE_REQUESTED",
+        "New Direct Booking Request",
+        `${actor.name || "A customer"} requested an appointment for ${input.serviceName || "service"}.`,
+        "DIRECT_HIRE_REQUEST",
+        createdReq.id
+      );
+    } catch (e) {
+      console.error("[Notification] Direct hire notification error:", e);
+    }
+
+    return createdReq;
   },
 
   /**
@@ -83,7 +100,7 @@ export const DirectHireService = {
 
     const workerId = actor.worker.id;
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Serialize concurrent booking attempts for this worker
       await tx.$queryRaw`SELECT id FROM workers WHERE id = ${workerId} FOR UPDATE`;
 
@@ -149,6 +166,27 @@ export const DirectHireService = {
         assignment,
       };
     });
+
+    // Notify customer via socket
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: result.request.customerId },
+      });
+      if (customer) {
+        await NotificationService.notifyUser(
+          customer.userId,
+          "DIRECT_HIRE_ACCEPTED",
+          "Booking Confirmed!",
+          `Worker accepted your booking for ${result.request.serviceName || "service"}.`,
+          "ASSIGNMENT",
+          result.assignment.id
+        );
+      }
+    } catch (e) {
+      console.error("[Notification] Direct hire accepted notification error:", e);
+    }
+
+    return result;
   },
 
   /**
@@ -165,9 +203,30 @@ export const DirectHireService = {
       throw new Error("Unauthorized");
     }
 
-    return prisma.directHireRequest.update({
+    const declined = await prisma.directHireRequest.update({
       where: { id: requestId },
       data: { status: "DECLINED" },
     });
+
+    // Notify customer via socket
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: request.customerId },
+      });
+      if (customer) {
+        await NotificationService.notifyUser(
+          customer.userId,
+          "DIRECT_HIRE_DECLINED",
+          "Booking Request Declined",
+          `Worker declined your booking request for ${request.serviceName || "service"}.`,
+          "DIRECT_HIRE_REQUEST",
+          declined.id
+        );
+      }
+    } catch (e) {
+      console.error("[Notification] Direct hire decline notification error:", e);
+    }
+
+    return declined;
   },
 };

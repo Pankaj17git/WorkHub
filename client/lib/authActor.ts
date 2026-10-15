@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 export interface AuthActor {
   userId: bigint;
   email: string;
+  name?: string | null;
   role: "CUSTOMER" | "WORKER" | "ADMIN" | "CONTRACTOR";
   customer: { id: bigint; addressId: bigint | null } | null;
   worker: { id: bigint; isVerified: boolean; addressId: bigint | null } | null;
@@ -49,6 +50,7 @@ export async function getAuthActor(req: NextRequest): Promise<AuthActor | null> 
     return {
       userId: user.id,
       email: user.email,
+      name: user.name,
       role,
       customer: user.customer
         ? {
