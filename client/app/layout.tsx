@@ -6,12 +6,12 @@ import AppShell from "@/components/layout/AppShell";
 import RouteNotice from "@/components/ui/RouteNotice";
 import { AuthProvider } from "@/context/AuthContext";
 
-const hankenGrotesk = Hanken_Grotesk({
-  variable: "--font-hanken",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800"],
-});
+// const hankenGrotesk = Hanken_Grotesk({
+//   variable: "--font-hanken",
+//   subsets: ["latin"],
+//   display: "swap",
+//   weight: ["300", "400", "500", "600", "700", "800"],
+// });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${hankenGrotesk.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={` ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#f8f9ff] text-[#0d1c2e]">
         <Suspense fallback={null}>

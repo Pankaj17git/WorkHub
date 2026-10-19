@@ -10,6 +10,7 @@
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "seed:roles": "tsx prisma/seed-roles.ts",
+    "seed:admin": "tsx prisma/seed-admin.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

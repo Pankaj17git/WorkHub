@@ -23,7 +23,9 @@ function LoginFormContent() {
   const redirectUrl = searchParams.get('redirect');
   const errorCode = searchParams.get('error');
 
-  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>(() => (urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'));
+  const [role, setRole] = useState<'CUSTOMER' | 'WORKER'>(() =>
+    urlRole === 'WORKER' ? 'WORKER' : 'CUSTOMER'
+  );
   const [prevUrlRole, setPrevUrlRole] = useState(urlRole);
   if (urlRole !== prevUrlRole) {
     setPrevUrlRole(urlRole);
@@ -170,7 +172,11 @@ function LoginFormContent() {
         {/* Login Form */}
         <>
           <div className="flex items-center justify-between pb-3 border-b border-[#e2e8f0]">
-            <span className={`text-xs font-bold flex items-center gap-1.5 font-geist uppercase ${role === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]'}`}>
+            <span
+              className={`text-xs font-bold flex items-center gap-1.5 font-geist uppercase ${
+                role === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]'
+              }`}
+            >
               {role === 'WORKER' ? (
                 <>
                   <Briefcase className="w-3.5 h-3.5" />
@@ -183,13 +189,18 @@ function LoginFormContent() {
                 </>
               )}
             </span>
+
             <User className="w-3.5 h-3.5 text-[#64748b]" />
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-[#334155] flex items-center gap-1.5">
-                <Mail className={`w-3.5 h-3.5 ${role === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]'}`} />
+                <Mail
+                  className={`w-3.5 h-3.5 ${
+                    role === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]'
+                  }`}
+                />
                 <span>Email Address</span>
               </label>
               <input
@@ -204,7 +215,11 @@ function LoginFormContent() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-[#334155] flex items-center gap-1.5">
-                <Lock className={`w-3.5 h-3.5 ${role === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]'}`} />
+                <Lock
+                  className={`w-3.5 h-3.5 ${
+                    role === 'WORKER' ? 'text-[#0d9488]' : 'text-[#0051d5]'
+                  }`}
+                />
                 <span>Password</span>
               </label>
               <input
@@ -222,14 +237,20 @@ function LoginFormContent() {
               type="submit"
               disabled={isSubmitting}
               className={`w-full py-3.5 px-4 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60 ${
-                role === 'WORKER' ? 'bg-[#0d9488] hover:bg-[#0b7c73]' : 'bg-[#0051d5] hover:bg-[#0042b0]'
+                role === 'WORKER'
+                  ? 'bg-[#0d9488] hover:bg-[#0b7c73]'
+                  : 'bg-[#0051d5] hover:bg-[#0042b0]'
               }`}
             >
               {isSubmitting ? (
                 <span>Signing In...</span>
               ) : (
                 <>
-                  <span>{role === 'WORKER' ? 'Access Partner Dashboard' : 'Sign In'}</span>
+                  <span>
+                    {role === 'WORKER'
+                      ? 'Access Partner Dashboard'
+                      : 'Sign In'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
