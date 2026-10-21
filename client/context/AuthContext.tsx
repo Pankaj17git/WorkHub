@@ -28,6 +28,7 @@ export interface AuthContextType {
   isLoading: boolean;
   isWorker: boolean;
   isCustomer: boolean;
+  isAdmin: boolean;
   role: string | null;
   login: (token: string, user: SessionUser) => void;
   logout: (redirectUrl?: string) => void;
@@ -95,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isWorker: user?.role === 'WORKER',
       isCustomer: user?.role === 'CUSTOMER',
+      isAdmin: user?.role === 'ADMIN',
       role: user?.role ?? null,
       login,
       logout,
