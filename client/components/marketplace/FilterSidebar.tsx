@@ -335,9 +335,10 @@ export default function FilterSidebar({
       </div>
 
       {/* ── SECTION 1: LOCATION SEARCH & GEOLOCATION ── */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs font-bold text-[#091426]">
-          <div className="flex items-center gap-1.5">
+      <div className="space-y-2.5">
+        {/* Section header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#091426]">
             <MapPin className="w-3.5 h-3.5 text-[#0051d5]" />
             <span>Location</span>
           </div>
@@ -345,98 +346,119 @@ export default function FilterSidebar({
             <button
               type="button"
               onClick={() => onSelectLocation('')}
-              className="text-[11px] font-medium text-[#64748b] hover:text-[#091426] cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0051d5] hover:text-[#003db3] transition-colors cursor-pointer"
             >
+              <X className="w-3 h-3" />
               Clear
             </button>
           )}
         </div>
 
-        <div className="relative">
-          <SearchInput
-            searchProvider={searchProvider}
-            onSelectLocation={handleSelectLocation}
-            onClear={() => onSelectLocation('')}
-            onTypingResult={(result) => {
-              setLocationDropdownOpen(result.length > 0);
-              setLocationSearchResults(result);
-            }}
-            showPopularLocations={false}
-          />
+        {/* Selected location badge */}
+        {selectedLocation && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#eff6ff] border border-[#bfdbfe] rounded-xl">
+            <MapPin className="w-3 h-3 text-[#0051d5] shrink-0" />
+            <span className="text-[11px] font-semibold text-[#0051d5] truncate flex-1">
+              {selectedLocation.length > 40
+                ? selectedLocation.split(',').slice(0, 2).join(',').trim()
+                : selectedLocation}
+            </span>
+          </div>
+        )}
 
-          {/* Autocomplete / Suggested Location Dropdown */}
-          {locationDropdownOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setLocationDropdownOpen(false)}
-              />
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#e2e8f0] rounded-xl shadow-lg z-20 py-1.5 max-h-48 overflow-y-auto">
-                <div className="px-3 py-1 text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider font-geist">
-                  Suggested Locations
+        {/* Unified search + locate card */}
+        <div className="rounded-xl border border-[#e2e8f0] bg-[#f8f9ff] overflow-visible">
+          {/* Search input row */}
+          <div className="relative">
+            <SearchInput
+              searchProvider={searchProvider}
+              onSelectLocation={handleSelectLocation}
+              onClear={() => onSelectLocation('')}
+              onTypingResult={(result) => {
+                setLocationDropdownOpen(result.length > 0);
+                setLocationSearchResults(result);
+              }}
+              showPopularLocations={false}
+              hideSubmitButton={true}
+              inputClassName="w-full pl-10 pr-8 py-2.5 text-xs bg-transparent text-[#091426] placeholder-[#94a3b8] font-medium rounded-t-xl border-0 focus:outline-none focus:ring-0 transition-all"
+            />
+
+            {/* Autocomplete Dropdown */}
+            {locationDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setLocationDropdownOpen(false)}
+                />
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#e2e8f0] rounded-xl shadow-xl z-20 py-1 max-h-52 overflow-y-auto">
+                  <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider border-b border-[#f1f5f9]">
+                    Suggested Locations
+                  </div>
+                  {locationSearchResults.map((loc) => (
+                    <button
+                      key={`${loc.lat}-${loc.lng}-${loc.label}`}
+                      type="button"
+                      onClick={() => {
+                        onSelectLocation(loc.label);
+                        setLocationDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors flex items-center gap-2 ${
+                        selectedLocation.toLowerCase() === loc.label.toLowerCase()
+                          ? 'bg-[#eff6ff] text-[#0051d5]'
+                          : 'text-[#334155] hover:bg-[#f8f9ff]'
+                      }`}
+                    >
+                      <MapPin className="w-3 h-3 shrink-0 text-[#64748b]" />
+                      <span className="truncate flex-1">{loc.label}</span>
+                      {selectedLocation.toLowerCase() === loc.label.toLowerCase() && (
+                        <Check className="w-3 h-3 text-[#0051d5] shrink-0" />
+                      )}
+                    </button>
+                  ))}
                 </div>
-                {locationSearchResults.map((loc) => (
-                  <button
-                    key={`${loc.lat}-${loc.lng}-${loc.label}`}
-                    type="button"
-                    onClick={() => {
-                      onSelectLocation(loc.label);
-                      setLocationDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 text-xs font-medium transition-colors flex items-center justify-between ${
-                      selectedLocation.toLowerCase() === loc.label.toLowerCase()
-                        ? 'bg-[#eff6ff] text-[#0051d5] font-semibold'
-                        : 'text-[#334155] hover:bg-[#f8f9ff]'
-                    }`}
-                  >
-                    <span className="truncate">{loc.label}</span>
-                    {selectedLocation.toLowerCase() === loc.label.toLowerCase() && (
-                      <Check className="w-3 h-3 text-[#0051d5] shrink-0" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Geolocation Button */}
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <button
-              id="btn-locate-me"
-              type="button"
-              onClick={startLocate}
-              disabled={isLocating}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-60 rounded-xl shadow-xs transition-all duration-150 cursor-pointer"
-            >
-              {isLocating ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Locating GPS...</span>
-                </>
-              ) : (
-                <>
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>My Location</span>
-                </>
-              )}
-            </button>
+              </>
+            )}
           </div>
 
-          {/* Geolocation Error Feedback */}
-          {errorMessage && (
-            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-1.5 text-[11px] text-amber-800">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-              <span className="flex-1">{errorMessage}</span>
-              <button
-                type="button"
-                onClick={() => setErrorMessage(null)}
-                className="text-amber-500 hover:text-amber-700 cursor-pointer"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          )}
+          {/* Divider */}
+          <div className="mx-3 border-t border-[#e2e8f0]" />
+
+          {/* My Location button */}
+          <button
+            id="btn-locate-me"
+            type="button"
+            onClick={startLocate}
+            disabled={isLocating}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-[#0051d5] hover:bg-[#eff6ff] active:bg-[#dbeafe] disabled:opacity-50 transition-all duration-150 cursor-pointer rounded-b-xl"
+          >
+            {isLocating ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-[#0051d5] border-t-transparent rounded-full animate-spin" />
+                <span>Detecting your location...</span>
+              </>
+            ) : (
+              <>
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Use My Current Location</span>
+              </>
+            )}
+          </button>
         </div>
+
+        {/* Geolocation Error Feedback */}
+        {errorMessage && (
+          <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-[11px] text-amber-800">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+            <span className="flex-1 leading-relaxed">{errorMessage}</span>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="text-amber-400 hover:text-amber-600 cursor-pointer shrink-0"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── SECTION 2: SERVICE CATEGORY & TRADE SKILLS ── */}
