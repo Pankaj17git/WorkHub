@@ -42,6 +42,11 @@ export async function middleware(request: NextRequest) {
   // If user is already logged in, redirect them to their respective dashboard.
   // The home route / is reserved for first-time visitors / guests.
   if (pathname === "/") {
+    if (payload?.role === "ADMIN") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/dashboard";
+      return NextResponse.redirect(url);
+    }
     if (payload?.role === "CUSTOMER") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
@@ -54,7 +59,38 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 2. WORKER PROTECTED ROUTES: /worker and /worker/*
+  // 2. ADMIN ROUTES: /admin, /admin/login, and /admin/*
+  if (pathname.startsWith("/admin")) {
+    // 2a. Standalone Admin Login Route
+    if (pathname === "/admin/login") {
+      // If already logged in as ADMIN, send straight to admin dashboard
+      if (payload?.role === "ADMIN") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin/dashboard";
+        return NextResponse.redirect(url);
+      }
+      return NextResponse.next();
+    }
+
+    // 2b. Protected Admin Area: requires active ADMIN session
+    if (!payload) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.search = `?redirect=${encodeURIComponent(pathname)}`;
+      return NextResponse.redirect(url);
+    }
+
+    if (payload.role !== "ADMIN") {
+      const url = request.nextUrl.clone();
+      url.pathname = payload.role === "WORKER" ? "/worker/dashboard" : "/dashboard";
+      url.search = "?error=unauthorized_admin_access";
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.next();
+  }
+
+  // 3. WORKER PROTECTED ROUTES: /worker and /worker/*
   if (pathname.startsWith("/worker")) {
     // Unauthenticated: redirect to login as WORKER
     if (!payload) {
@@ -62,6 +98,11 @@ export async function middleware(request: NextRequest) {
       url.pathname = "/login";
       url.search = `?role=WORKER&redirect=${encodeURIComponent(pathname)}`;
       return NextResponse.redirect(url);
+    }
+
+    // Admins can visit and inspect worker portal
+    if (payload.role === "ADMIN") {
+      return NextResponse.next();
     }
 
     // Customer role trying to access worker portal
@@ -73,7 +114,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 3. CUSTOMER PROTECTED ROUTES: /dashboard, /book/* and /bookings/*
+  // 4. CUSTOMER PROTECTED ROUTES: /dashboard, /book/* and /bookings/*
   if (
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/") ||
@@ -86,6 +127,11 @@ export async function middleware(request: NextRequest) {
       url.pathname = "/login";
       url.search = `?role=CUSTOMER&redirect=${encodeURIComponent(pathname)}`;
       return NextResponse.redirect(url);
+    }
+
+    // Admins can visit and inspect customer portal
+    if (payload.role === "ADMIN") {
+      return NextResponse.next();
     }
 
     // Worker role trying to access customer dashboard or booking pages
@@ -103,6 +149,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/admin",
+    "/admin/:path*",
     "/dashboard",
     "/dashboard/:path*",
     "/worker",

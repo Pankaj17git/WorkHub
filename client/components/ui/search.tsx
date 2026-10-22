@@ -887,13 +887,17 @@ function SearchContent() {
                   >
                     Reset Filters
                   </button>
-                  <Link
-                    href="/jobs/new"
-                    className="px-4 py-2.5 bg-[#f8f9ff] text-[#091426] border border-[#e2e8f0] text-xs font-semibold rounded-xl hover:bg-[#e2e8f0] transition-colors inline-flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Post a Job</span>
-                  </Link>
+                  {
+                    user?.role === 'CUSTOMER' && (
+                      <Link
+                        href="/jobs/new"
+                        className="px-4 py-2.5 bg-[#f8f9ff] text-[#091426] border border-[#e2e8f0] text-xs font-semibold rounded-xl hover:bg-[#e2e8f0] transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Post a Job</span>
+                      </Link>
+                    )
+                  }
                 </div>
               </div>
             ) : (
