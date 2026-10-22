@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useTransition } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -74,27 +74,6 @@ export default function AdminDashboardPage() {
   const [quickSkillSuccess, setQuickSkillSuccess] = useState<string | null>(null);
   const [quickSkillError, setQuickSkillError] = useState<string | null>(null);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.get('/api/admin/stats');
-      if (res.data.success) {
-        setStats(res.data.stats);
-        setRecentUsers(res.data.recentUsers || []);
-        setRecentSkills(res.data.recentSkills || []);
-        setTopSkills(res.data.topSkills || []);
-      }
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to fetch platform dashboard statistics'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
 
   const handleQuickAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +100,27 @@ export default function AdminDashboardPage() {
       setQuickSkillLoading(false);
     }
   };
+
+  const fetchDashboardData = async () => {
+    try {
+      const res = await api.get('/api/admin/stats');
+      if (res.data.success) {
+        setStats(res.data.stats);
+        setRecentUsers(res.data.recentUsers || []);
+        setRecentSkills(res.data.recentSkills || []);
+        setTopSkills(res.data.topSkills || []);
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to fetch platform dashboard statistics'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
 
   return (
     <div className="space-y-8">

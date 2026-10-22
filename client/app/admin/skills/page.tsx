@@ -12,7 +12,6 @@ import {
   HardHat,
   Database,
   Sparkles,
-  Layers,
   X,
 } from 'lucide-react';
 import api, { getApiErrorMessage } from '@/lib/api';
@@ -48,27 +47,7 @@ export default function AdminSkillsPage() {
   // Deleting state
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchSkills = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set('q', searchQuery.trim());
-
-      const res = await api.get(`/api/admin/skills?${params.toString()}`);
-      if (res.data.success) {
-        setSkills(res.data.skills);
-      }
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to fetch platform skills'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSkills();
-  }, []);
+  
 
   // Auto-slug key when name changes
   const handleNameChange = (val: string) => {
@@ -143,6 +122,28 @@ export default function AdminSkillsPage() {
     if (filterType === 'CUSTOM') return s.isCustom;
     return true;
   });
+
+  const fetchSkills = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.set('q', searchQuery.trim());
+
+      const res = await api.get(`/api/admin/skills?${params.toString()}`);
+      if (res.data.success) {
+        setSkills(res.data.skills);
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to fetch platform skills'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSkills();
+  }, []);
 
   return (
     <div className="space-y-6">

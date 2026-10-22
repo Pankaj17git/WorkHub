@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   HardHat,
   Search,
@@ -40,12 +40,13 @@ export default function AdminWorkersPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchWorkers = async () => {
+  const fetchWorkers = useCallback(async (query?: string) => {
     setLoading(true);
     setError(null);
     try {
+      const q = typeof query === 'string' ? query : searchQuery;
       const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set('q', searchQuery.trim());
+      if (q.trim()) params.set('q', q.trim());
 
       const res = await api.get(`/api/admin/workers?${params.toString()}`);
       if (res.data.success) {
@@ -56,10 +57,33 @@ export default function AdminWorkersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
 
   useEffect(() => {
-    fetchWorkers();
+    let ignore = false;
+
+    async function loadInitialWorkers() {
+      try {
+        const res = await api.get('/api/admin/workers');
+        if (!ignore && res.data.success) {
+          setWorkers(res.data.workers);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(getApiErrorMessage(err, 'Failed to fetch platform workers'));
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadInitialWorkers();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   return (
@@ -77,7 +101,7 @@ export default function AdminWorkersPage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={fetchWorkers}
+            onClick={() => fetchWorkers()}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-all"
           >
@@ -89,7 +113,13 @@ export default function AdminWorkersPage() {
 
       {/* Search & Stats Bar */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            fetchWorkers();
+          }}
+          className="relative flex-1"
+        >
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -98,7 +128,7 @@ export default function AdminWorkersPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-teal-600 focus:bg-white transition-all"
           />
-        </div>
+        </form>
 
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span className="font-bold text-slate-900">{workers.length}</span>

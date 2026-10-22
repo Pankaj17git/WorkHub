@@ -37,25 +37,22 @@ export default function AdminCustomersPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const fetchCustomers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set('q', searchQuery.trim());
-
-      const res = await api.get(`/api/admin/customers?${params.toString()}`);
-      if (res.data.success) {
-        setCustomers(res.data.customers);
-      }
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to fetch platform customers'));
-    } finally {
-      setLoading(false);
-    }
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.set('q', searchQuery.trim());
+    const res = await api.get(`/api/admin/customers?${params.toString()}`)
+    return res.data;
   };
 
   useEffect(() => {
-    fetchCustomers();
+    fetchCustomers().then(res => {
+      if (res.success) {
+        setCustomers(res.customers);
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.log(err);
+      setLoading(false);
+    });
   }, []);
 
   return (
@@ -73,7 +70,15 @@ export default function AdminCustomersPage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={fetchCustomers}
+            onClick={() => { fetchCustomers().then(res => {
+              if (res.success) {
+                setCustomers(res.customers);
+              }
+              setLoading(false);
+            }).catch(err => {
+              console.log(err);
+              setLoading(false);
+            }); }}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-all"
           >

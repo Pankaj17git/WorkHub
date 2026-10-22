@@ -1,24 +1,19 @@
 'use client';
 
-import React, { useEffect, useState, useTransition } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 import {
   Users,
   Search,
-  Filter,
   CheckCircle2,
   XCircle,
   HardHat,
-  UserCheck,
   ShieldCheck,
   AlertCircle,
   RefreshCw,
-  ExternalLink,
   ShoppingBag,
   Briefcase,
   Mail,
-  Phone,
-  Calendar,
+  Phone
 } from 'lucide-react';
 import api, { getApiErrorMessage } from '@/lib/api';
 
@@ -57,32 +52,38 @@ export default function AdminUsersPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set('q', searchQuery.trim());
-      if (roleFilter !== 'ALL') params.set('role', roleFilter);
-      if (statusFilter !== 'ALL') params.set('status', statusFilter);
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.set('q', searchQuery.trim());
+    if (roleFilter !== 'ALL') params.set('role', roleFilter);
+    if (statusFilter !== 'ALL') params.set('status', statusFilter);
 
-      const res = await api.get(`/api/admin/users?${params.toString()}`);
-      if (res.data.success) {
-        setUsers(res.data.users);
-      }
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to retrieve platform users'));
-    } finally {
-      setLoading(false);
-    }
+    const res = await api.get(`/api/admin/users?${params.toString()}`);
+    return res.data;
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers().then(res => {
+      if (res.success) {
+        setUsers(res.users);
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.log(err);
+      setLoading(false);
+    });
   }, [roleFilter, statusFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchUsers();
+    fetchUsers().then(res => {
+      if (res.success) {
+        setUsers(res.users);
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.log(err);
+      setLoading(false);
+    });
   };
 
   const handleToggleStatus = async (user: PlatformUser) => {
