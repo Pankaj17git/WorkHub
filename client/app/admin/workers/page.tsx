@@ -42,7 +42,7 @@ export default function AdminWorkersPage() {
 
   const fetchWorkers = useCallback(async (query?: string) => {
     setLoading(true);
-    setError(null);
+    setError(null); 
     try {
       const q = typeof query === 'string' ? query : searchQuery;
       const params = new URLSearchParams();
