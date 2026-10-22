@@ -1,10 +1,12 @@
 export type BookingTimelineStatus =
+  | 'ASSIGNED'
   | 'CONFIRMED'
   | 'PRO_ASSIGNED'
   | 'ON_THE_WAY'
   | 'ARRIVED'
   | 'IN_PROGRESS'
-  | 'COMPLETED';
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 export interface BookingProgressStep {
   id: string;

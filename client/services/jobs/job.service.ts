@@ -3,6 +3,7 @@ import { AuthActor } from "@/lib/authActor";
 import { AvailabilityService } from "../worker/availability.service";
 import { StaffingRecommendationService } from "./staffingRecommendation.service";
 import { addressService } from "../address.service";
+import { NotificationService } from "../notification/notification.service";
 
 export interface CreateJobInput {
   title: string;
@@ -177,12 +178,16 @@ export const JobService = {
 
     // Availability validation if job has preferred schedule
     if (job.preferredDate && job.preferredStartTime && job.preferredEndTime) {
+      console.log("the skills", job.skills, typeof job.skills)
       const avail = await AvailabilityService.checkWorkerAvailability(
         actor.worker.id,
         job.preferredDate,
         job.preferredStartTime,
         job.preferredEndTime,
-        { serviceName: job.serviceName || undefined }
+        {
+          serviceName: job.serviceName || undefined,
+          requiredSkills: job.skills as string[],
+        }
       );
 
       if (!avail.isAvailable) {
@@ -215,7 +220,7 @@ export const JobService = {
       throw new Error("You have already applied to this job");
     }
 
-    return prisma.jobApplication.create({
+    const app = await prisma.jobApplication.create({
       data: {
         jobId,
         workerId: actor.worker.id,
@@ -224,6 +229,27 @@ export const JobService = {
         status: "SUBMITTED",
       },
     });
+
+    // Notify customer (job poster) via socket
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: job.customerId },
+      });
+      if (customer) {
+        await NotificationService.notifyUser(
+          customer.userId,
+          "JOB_APPLICATION_SUBMITTED",
+          "New Job Applicant",
+          `${actor.name || "A specialist"} applied to your job: "${job.title}".`,
+          "JOB",
+          job.id
+        );
+      }
+    } catch (e) {
+      console.error("[Notification] Job application notification error:", e);
+    }
+
+    return app;
   },
 
   /**
@@ -260,7 +286,7 @@ export const JobService = {
       throw new Error("Only the job poster can select workers");
     }
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Lock job to serialize concurrent worker selection
       await tx.$queryRaw`SELECT id FROM jobs WHERE id = ${jobId} FOR UPDATE`;
 
@@ -286,7 +312,7 @@ export const JobService = {
         );
       }
 
-      const createdAssignments = [];
+      const createdAssignments: Array<Awaited<ReturnType<typeof tx.assignment.create>>> = [];
 
       for (let i = 0; i < workerIds.length; i++) {
         const wId = workerIds[i];
@@ -348,5 +374,28 @@ export const JobService = {
         assignments: createdAssignments,
       };
     });
+
+    // Notify each selected worker via socket
+    try {
+      for (const assignment of result.assignments) {
+        const worker = await prisma.worker.findUnique({
+          where: { id: assignment.workerId },
+        });
+        if (worker) {
+          await NotificationService.notifyUser(
+            worker.userId,
+            "JOB_APPLICATION_SELECTED",
+            "You Were Hired!",
+            `You have been selected for the job: "${result.job.title}".`,
+            "ASSIGNMENT",
+            assignment.id
+          );
+        }
+      }
+    } catch (e) {
+      console.error("[Notification] Worker selection notification error:", e);
+    }
+
+    return result;
   },
 };

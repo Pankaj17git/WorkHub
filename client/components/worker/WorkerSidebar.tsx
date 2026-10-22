@@ -36,7 +36,7 @@ export default function WorkerSidebar({ onClose, className = '' }: WorkerSidebar
 
   const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/worker/dashboard', icon: LayoutDashboard },
-    { label: 'Find Jobs', href: '/worker/search', icon: Search },
+    { label: 'Find Jobs', href: '/worker/search?mode=jobs', icon: Search },
     { label: 'My Jobs', href: '/worker/jobs', icon: Briefcase, badge: 3 },
     { label: 'Messages', href: '/worker/message', icon: MessageSquare, badge: 5 },
     { label: 'My Network', href: '/worker/network', icon: Users },

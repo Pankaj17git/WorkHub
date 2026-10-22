@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 interface JwtPayload {
   userId?: string;
@@ -9,34 +10,43 @@ interface JwtPayload {
 }
 
 // Lightweight JWT payload decoder for Next.js Edge Middleware route gating
-function decodeJwtPayload(token: string): JwtPayload | null {
+async function decodeJwtPayload(
+  token: string
+): Promise<JwtPayload | null> {
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const payload = JSON.parse(new TextDecoder().decode(bytes));
+    const secret = process.env.JWT_SECRET;
 
-    // Check expiration if present
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
-      return null;
+    if (!secret) {
+      throw new Error("JWT_SECRET is not configured");
     }
 
-    return payload;
+    const secretKey = new TextEncoder().encode(secret);
+
+    const { payload } = await jwtVerify(token, secretKey, {
+      algorithms: ["HS256"],
+    });
+
+    return payload as JwtPayload;
   } catch {
+    // Invalid signature, malformed token, or expired token
     return null;
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const token = request.cookies.get("wh_token")?.value;
-  const payload = token ? decodeJwtPayload(token) : null;
+  const payload = token ? await decodeJwtPayload(token) : null;
   const { pathname } = request.nextUrl;
 
   // 1. HOME ROUTE: /
   // If user is already logged in, redirect them to their respective dashboard.
   // The home route / is reserved for first-time visitors / guests.
   if (pathname === "/") {
+    if (payload?.role === "ADMIN") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/dashboard";
+      return NextResponse.redirect(url);
+    }
     if (payload?.role === "CUSTOMER") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
@@ -49,7 +59,38 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 2. WORKER PROTECTED ROUTES: /worker and /worker/*
+  // 2. ADMIN ROUTES: /admin, /admin/login, and /admin/*
+  if (pathname.startsWith("/admin")) {
+    // 2a. Standalone Admin Login Route
+    if (pathname === "/admin/login") {
+      // If already logged in as ADMIN, send straight to admin dashboard
+      if (payload?.role === "ADMIN") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin/dashboard";
+        return NextResponse.redirect(url);
+      }
+      return NextResponse.next();
+    }
+
+    // 2b. Protected Admin Area: requires active ADMIN session
+    if (!payload) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.search = `?redirect=${encodeURIComponent(pathname)}`;
+      return NextResponse.redirect(url);
+    }
+
+    if (payload.role !== "ADMIN") {
+      const url = request.nextUrl.clone();
+      url.pathname = payload.role === "WORKER" ? "/worker/dashboard" : "/dashboard";
+      url.search = "?error=unauthorized_admin_access";
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.next();
+  }
+
+  // 3. WORKER PROTECTED ROUTES: /worker and /worker/*
   if (pathname.startsWith("/worker")) {
     // Unauthenticated: redirect to login as WORKER
     if (!payload) {
@@ -57,6 +98,11 @@ export function middleware(request: NextRequest) {
       url.pathname = "/login";
       url.search = `?role=WORKER&redirect=${encodeURIComponent(pathname)}`;
       return NextResponse.redirect(url);
+    }
+
+    // Admins can visit and inspect worker portal
+    if (payload.role === "ADMIN") {
+      return NextResponse.next();
     }
 
     // Customer role trying to access worker portal
@@ -68,7 +114,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 3. CUSTOMER PROTECTED ROUTES: /dashboard, /book/* and /bookings/*
+  // 4. CUSTOMER PROTECTED ROUTES: /dashboard, /book/* and /bookings/*
   if (
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/") ||
@@ -81,6 +127,11 @@ export function middleware(request: NextRequest) {
       url.pathname = "/login";
       url.search = `?role=CUSTOMER&redirect=${encodeURIComponent(pathname)}`;
       return NextResponse.redirect(url);
+    }
+
+    // Admins can visit and inspect customer portal
+    if (payload.role === "ADMIN") {
+      return NextResponse.next();
     }
 
     // Worker role trying to access customer dashboard or booking pages
@@ -98,6 +149,8 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/admin",
+    "/admin/:path*",
     "/dashboard",
     "/dashboard/:path*",
     "/worker",

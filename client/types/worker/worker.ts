@@ -4,6 +4,7 @@ export type WorkerDbClient = PrismaClient | Prisma.TransactionClient;
 
 export interface AvailabilityCheckOptions {
   serviceName?: string;
+  requiredSkills?: string[];
   bufferMinutes?: number;
   excludeAssignmentId?: bigint;
   dbClient?: WorkerDbClient;

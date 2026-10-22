@@ -1,6 +1,6 @@
 "use client";
 
-export type UserRole = "CUSTOMER" | "WORKER";
+export type UserRole = "CUSTOMER" | "WORKER" | "ADMIN";
 
 export interface SessionUser {
   id: string;
@@ -94,6 +94,7 @@ export function clearSession() {
 }
 
 export function dashboardPathForRole(role?: string | null): string {
+  if (role === "ADMIN") return "/admin/dashboard";
   return role === "WORKER" ? "/worker/dashboard" : "/dashboard";
 }
 
@@ -103,6 +104,7 @@ export function dashboardPathForRole(role?: string | null): string {
  * dashboard.
  */
 export function signupRedirectPath(role?: string | null): string {
+  if (role === "ADMIN") return "/admin/dashboard";
   return role === "WORKER" ? "/worker/onboarding/skills" : "/dashboard";
 }
 
@@ -115,8 +117,8 @@ export function resolveLoginRedirect(
   role: string | null | undefined,
   redirect?: string | null
 ): string {
-  debugger;
   if (redirect && redirect.startsWith("/") && !redirect.startsWith("/api")) {
+    if (role === "ADMIN") return redirect;
     const wantsWorkerArea = redirect.startsWith("/worker");
     if (role === "WORKER" && wantsWorkerArea) return redirect;
     if (role !== "WORKER" && !wantsWorkerArea) return redirect;
@@ -130,4 +132,8 @@ export function isWorkerRole(user?: SessionUser | null): boolean {
 
 export function isCustomerRole(user?: SessionUser | null): boolean {
   return user?.role === "CUSTOMER";
+}
+
+export function isAdminRole(user?: SessionUser | null): boolean {
+  return user?.role === "ADMIN";
 }

@@ -23,10 +23,23 @@ export const apiResponse = {
    * Send a successful JSON response
    */
   success<T = unknown>(data?: T, statusCode: number = Status.OK, message?: string) {
-    const payload = {
-      ...(message ? { message } : {}),
-      ...(typeof data === "object" && data !== null ? data : data !== undefined ? { data } : {}),
-    };
+    let payload: Record<string, unknown>;
+    if (Array.isArray(data)) {
+      payload = {
+        ...(message ? { message } : {}),
+        data,
+      };
+    } else if (typeof data === "object" && data !== null) {
+      payload = {
+        ...(message ? { message } : {}),
+        ...data,
+      };
+    } else {
+      payload = {
+        ...(message ? { message } : {}),
+        ...(data !== undefined ? { data } : {}),
+      };
+    }
     return NextResponse.json(payload, { status: statusCode });
   },
 

@@ -337,7 +337,7 @@ export const JobController = {
       return apiResponse.success(
         {
           job: serializeJob(result.job),
-          assignments: result.assignments.map((a) => ({
+          assignments: result.assignments.map((a: { id: bigint; jobId?: bigint | null; customerId: bigint; workerId: bigint; [key: string]: unknown }) => ({
             ...a,
             id: a.id.toString(),
             jobId: a.jobId?.toString(),
@@ -389,7 +389,7 @@ export const JobController = {
           assignments: {
             include: {
               worker: {
-                include: { user: { select: { name: true, profileImage: true } } },
+                include: { user: { select: { name: true, phone: true, profileImage: true } } },
               },
             },
           },

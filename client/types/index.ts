@@ -88,10 +88,13 @@ export interface WorkerJobRequest {
   date: string;
   timeWindow: string;
   earningsAmount: number;
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'ON_THE_WAY' | 'IN_PROGRESS' | 'COMPLETED';
+  status: 'PENDING' | 'ACCEPTED' | 'ASSIGNED' | 'DECLINED' | 'ON_THE_WAY' | 'IN_PROGRESS' | 'COMPLETED';
   otp?: string;
   notes?: string;
   expiresInSeconds?: number;
+  itemType?: 'ASSIGNMENT' | 'DIRECT_HIRE' | 'APPLICATION';
+  jobId?: string;
+  role?: string;
 }
 
 export interface WorkerMetric {

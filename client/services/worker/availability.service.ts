@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AvailabilityCheckOptions } from "@/types";
+import { hasMatchingSkills, getRelatedSkillKeys } from "@/lib/skill-mapping";
 
 export interface AvailabilityCheckResult {
   isAvailable: boolean;
@@ -46,7 +47,8 @@ export const AvailabilityService = {
     const buffer = options?.bufferMinutes ?? 30;
     const reqStartMins = timeToMinutes(requestedStartTime);
     const reqEndMins = timeToMinutes(requestedEndTime);
-
+    console.log("the options", options)
+    
     if (reqStartMins >= reqEndMins) {
       return {
         isAvailable: false,
@@ -62,6 +64,9 @@ export const AvailabilityService = {
       include: {
         user: true,
         services: true,
+        skills: {
+          include: { skill: true },
+        },
         availabilities: {
           where: { dayOfWeek },
         },
@@ -71,6 +76,7 @@ export const AvailabilityService = {
       },
     });
 
+
     if (!worker || worker.deletedAt !== null || worker.user.deletedAt !== null || worker.user.status !== "ACTIVE") {
       return {
         isAvailable: false,
@@ -78,17 +84,36 @@ export const AvailabilityService = {
       };
     }
 
-    // Check service offering if specified
+    // Check service offering — fall back to skill match if service not found
     if (options?.serviceName) {
+      console.log("the worker services", options)
       const hasService = worker.services.some(
         (s: { serviceName: string; isActive: boolean }) =>
           s.serviceName.toLowerCase() === options.serviceName?.toLowerCase() && s.isActive
       );
+
       if (!hasService) {
-        return {
-          isAvailable: false,
-          reason: `Worker does not offer active service: ${options.serviceName}`,
-        };
+        // Collect required skill names: explicit list from options, or fall back to serviceName
+        const requiredSkills = options.requiredSkills?.length
+          ? options.requiredSkills
+          : [options.serviceName];
+
+        const workerSkillNames = worker.skills.map(
+          (ws: { skill: { name: string; key: string } }) => ws.skill.name
+        );
+        const workerSkillKeys = worker.skills.map(
+          (ws: { skill: { name: string; key: string } }) => ws.skill.key
+        );
+
+        const hasSkillMatch = hasMatchingSkills(workerSkillKeys, workerSkillNames, requiredSkills);
+        console.log("the worker hasmatching skills", hasSkillMatch, workerSkillKeys, workerSkillNames, requiredSkills);
+
+        if (!hasSkillMatch) {
+          return {
+            isAvailable: false,
+            reason: `Worker does not offer the service "${options.serviceName}" and has no matching skill`,
+          };
+        }
       }
     }
 
