@@ -118,7 +118,7 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(); 
   }, []);
 
 
